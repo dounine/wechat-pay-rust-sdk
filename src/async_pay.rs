@@ -1,4 +1,3 @@
 use crate::pay::WechatPay;
 
-impl WechatPay{
-}
+impl WechatPay {}
