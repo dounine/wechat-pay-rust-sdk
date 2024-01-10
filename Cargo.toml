@@ -10,3 +10,12 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+base64 = "0.21.6"
+rsa = { version = "0.9.6", features = ["sha2"] }
+sha2 = "0.11.0-pre.0"
+md5 = "0.7.0"
+reqwest = "0.11.23"
+thiserror = "1.0.56"
+uuid = "1.6.1"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"

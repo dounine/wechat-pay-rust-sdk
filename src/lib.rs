@@ -1,3 +1,9 @@
+mod sync_pay;
+mod async_pay;
+mod pay;
+mod pay_type;
+mod sign;
+
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
