@@ -38,7 +38,6 @@
 //!     1.into(),
 //! )).expect("native_pay error");
 //! println!("body: {:?}", body);
-//! //NativeResponse { code: None, message: None, code_url: Some("weixin://wxpay/bizpayurl?pr=yL2aIPzz") }
 //! ```
 //! 输出
 //! ```rust

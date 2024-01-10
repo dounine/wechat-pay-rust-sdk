@@ -37,6 +37,7 @@ let body = wechat_pay.native_pay(NativeConfig::new(
     "124324343",
     1.into(),
 )).expect("native_pay error");
+println!("body: {:?}", body);
 ```
 输出
 ```rust
