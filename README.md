@@ -96,7 +96,7 @@ println!("body: {:?}", body);
  ```
  输出
  ```rust
-H5Response { 
+JsapiResponse { 
     code: None, 
     message: None, 
     prepay_id: Some("wx201410272009395522657a690389285100") 
@@ -120,6 +120,30 @@ println!("body: {:?}", body);
 输出
  ```rust
 AppResponse { 
+    code: None, 
+    message: None, 
+    prepay_id: Some("wx201410272009395522657a690389285100") 
+}
+ ```
+
+## 小程序支付
+
+```rust
+use wechat_pay_rust_sdk::model::MicroParams;
+use wechat_pay_rust_sdk::pay::WechatPay;
+
+let wechat_pay = WechatPay::from_env();
+let body = wechat_pay.micro_pay(JsapiParams::new(
+     "测试支付1分",
+     "1243243",
+     1.into(),
+     "open_id".into()
+     )).expect("micro_pay error");
+println!("body: {:?}", body);
+ ```
+输出
+ ```rust
+MicroResponse { 
     code: None, 
     message: None, 
     prepay_id: Some("wx201410272009395522657a690389285100") 

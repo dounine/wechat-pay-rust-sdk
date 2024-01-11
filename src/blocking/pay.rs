@@ -1,10 +1,10 @@
 use serde_json::{Map, Value};
 use tracing::debug;
 use crate::error::PayError;
-use crate::model::{AppParams, H5Params, JsapiParams, NativeParams};
+use crate::model::{AppParams, H5Params, JsapiParams, MicroParams, NativeParams};
 use crate::pay::WechatPay;
 use crate::request::HttpMethod;
-use crate::response::{AppResponse, H5Response, JsapiResponse, NativeResponse};
+use crate::response::{AppResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse};
 
 impl WechatPay {
     pub fn h5_pay(&self, params: H5Params) -> Result<H5Response, PayError> {
@@ -93,6 +93,35 @@ impl WechatPay {
             .map(Ok)?
     }
 
+    pub fn micro_pay(&self, params: MicroParams) -> Result<MicroResponse, PayError> {
+        let url = "/v3/pay/transactions/jsapi";
+        let method = HttpMethod::POST;
+        let json_str = serde_json::to_string(&params)?;
+        debug!("native_pay json_str: {}", json_str);
+        let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
+        map.insert("appid".to_owned(), self.appid().into());
+        map.insert("mchid".to_owned(), self.mch_id().into());
+        map.insert("notify_url".to_owned(), self.notify_url().into());
+
+        let body = serde_json::to_string(&map)?;
+        let headers = self.build_header(
+            method,
+            url,
+            body.as_str(),
+        )?;
+
+        let client = reqwest::blocking::Client::new();
+        let url = format!("{}{}", self.base_url(), url);
+        debug!("url: {}", url);
+        debug!("body: {}",body);
+        client.post(url)
+            .headers(headers)
+            .body(body)
+            .send()?
+            .json::<MicroResponse>()
+            .map(Ok)?
+    }
+
     pub fn jsapi_pay(&self, params: JsapiParams) -> Result<JsapiResponse, PayError> {
         let url = "/v3/pay/transactions/jsapi";
         let method = HttpMethod::POST;
@@ -127,7 +156,7 @@ impl WechatPay {
 mod tests {
     use dotenvy::dotenv;
     use tracing::debug;
-    use crate::model::{AppParams, H5Params, H5SceneInfo, JsapiParams, NativeParams, SceneInfo};
+    use crate::model::{AppParams, H5Params, H5SceneInfo, JsapiParams, MicroParams, NativeParams, SceneInfo};
     use crate::pay::WechatPay;
     use crate::util;
 
@@ -163,6 +192,20 @@ mod tests {
             1.into(),
             "open_id".into()
         )).expect("jsapi_pay error");
+        debug!("body: {:?}", body);
+    }
+
+    #[test]
+    pub fn test_micro_pay() {
+        init_log();
+        dotenv().ok();
+        let wechat_pay = WechatPay::from_env();
+        let body = wechat_pay.micro_pay(MicroParams::new(
+            "测试支付1分",
+            "1243243",
+            1.into(),
+            "open_id".into(),
+        )).expect("micro_pay error");
         debug!("body: {:?}", body);
     }
 

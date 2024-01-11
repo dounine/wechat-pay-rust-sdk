@@ -202,6 +202,45 @@ pub struct JsapiParams {
     pub scene_info: Option<SceneInfo>,
 }
 
+#[derive(Serialize, Debug, Clone)]
+pub struct MicroParams {
+    ///【商品描述】 商品描述
+    pub description: String,
+    ///【商户订单号】 商户系统内部订单号，只能是数字、大小写字母_-*且在同一个商户号下唯一。
+    pub out_trade_no: String,
+    ///【订单金额】 订单金额信息
+    pub amount: AmountInfo,
+    ///【支付者】 支付者信息
+    pub payer: PayerInfo,
+    ///【附加数据】 附加数据，在查询API和支付通知中原样返回，可作为自定义参数使用，实际情况下只有支付完成状态才会返回该字段。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attach: Option<String>,
+    ///【优惠功能】 优惠功能
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<OrderDetail>,
+    ///【交易结束时间】 订单失效时间，遵循rfc3339标准格式，格式为yyyy-MM-DDTHH:mm:ss+TIMEZONE，yyyy-MM-DD表示年月日，T出现在字符串中，表示time元素的开头，HH:mm:ss表示时分秒，TIMEZONE表示时区（+08:00表示东八区时间，领先UTC8小时，即北京时间）。例如：2015-05-20T13:29:35+08:00表示，北京时间2015年5月20日13点29分35秒。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_expire: Option<i64>,
+    ///【场景信息】 支付场景描述
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scene_info: Option<SceneInfo>,
+}
+
+impl MicroParams {
+    pub fn new<S: AsRef<str>>(description: S, out_trade_no: S, amount: AmountInfo, payer: PayerInfo) -> Self {
+        Self {
+            description: description.as_ref().to_string(),
+            out_trade_no: out_trade_no.as_ref().to_string(),
+            amount,
+            payer,
+            time_expire: None,
+            attach: None,
+            detail: None,
+            scene_info: None,
+        }
+    }
+}
+
 impl JsapiParams {
     pub fn new<S: AsRef<str>>(description: S, out_trade_no: S, amount: AmountInfo, payer: PayerInfo) -> Self {
         Self {

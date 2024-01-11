@@ -25,6 +25,14 @@ pub struct AppResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct MicroResponse {
+    pub code: Option<String>,
+    pub message: Option<String>,
+    ///【预支付交易会话标识】 预支付交易会话标识。用于后续接口调用中使用，该值有效期为2小时
+    pub prepay_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct H5Response {
     pub code: Option<String>,
     pub message: Option<String>,
