@@ -13,8 +13,8 @@
 //! ## 使用指南
 //! 引入依赖
 //! ```toml
-//! wechat-pay-rust-sdk = {version = "0.1.0"}
-//! #开启异步 wechat-pay-rust-sdk = {version = "0.1.0", features = ["async"]}
+//! wechat-pay-rust-sdk = {version = "0.1.0",features = ["blocking"]}
+//! #异步 wechat-pay-rust-sdk = {version = "0.1.0", features = ["async"]}
 //! ```
 //!
 //! ## native支付
@@ -43,10 +43,16 @@
 //! ```rust
 //! NativeResponse { code: None, message: None, code_url: Some("weixin://wxpay/bizpayurl?pr=yL2aIPzz") }
 //! ```
-mod sync_pay;
 
-#[cfg(feature = "async")]
-mod async_pay;
+cfg_if::cfg_if!{
+    if #[cfg(feature = "blocking")] {
+        #[cfg(feature = "blocking")]
+        pub mod blocking;
+    } else if #[cfg(feature = "async")] {
+        #[cfg(feature = "async")]
+        pub mod async_impl;
+    }
+}
 pub mod pay;
 pub mod pay_type;
 pub mod sign;

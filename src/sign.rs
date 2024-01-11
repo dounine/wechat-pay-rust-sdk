@@ -10,7 +10,7 @@ use sha2::Digest;
 /// rsa = { version = "0.9.6", features = ["sha2"] }
 /// sha2 = "0.11.0-pre.0"
 /// ```
-pub fn sha256_sign<S>(private_key: S, content:S) -> String
+pub(crate) fn sha256_sign<S>(private_key: S, content:S) -> String
     where S: AsRef<str>
 {
     let private_key = RsaPrivateKey::from_pkcs8_pem(private_key.as_ref()).expect("failed to parse key");

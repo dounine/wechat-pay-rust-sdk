@@ -6,8 +6,10 @@ use crate::pay::WechatPay;
 use crate::request::HttpMethod;
 use crate::response::NativeResponse;
 
+#[cfg(feature = "async")]
 impl WechatPay {
-    pub fn native_pay(&self, body: NativeConfig) -> Result<NativeResponse, PayError> {
+    #[cfg(feature = "async")]
+    pub async fn native_pay(&self, body: NativeConfig) -> Result<NativeResponse, PayError> {
         let url = "/v3/pay/transactions/native";
         let method = HttpMethod::POST;
         let json_str = serde_json::to_string(&body)?;
@@ -24,15 +26,17 @@ impl WechatPay {
             body.as_str(),
         )?;
 
-        let client = reqwest::blocking::Client::new();
+        let client = reqwest::Client::new();
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {}", url);
         debug!("body: {}",body);
         client.post(url)
             .headers(headers)
             .body(body)
-            .send()?
+            .send()
+            .await?
             .json::<NativeResponse>()
+            .await
             .map(Ok)?
     }
 }
@@ -52,26 +56,18 @@ mod tests {
             .init();
     }
 
-    #[test]
-    pub fn test_native_pay() {
+    #[tokio::test]
+    pub async fn test_native_pay() {
         init_log();
         dotenv().ok();
         let private_key_path = "./apiclient_key.pem";
         let private_key = std::fs::read_to_string(private_key_path).unwrap();
-        // let wechat_pay = WechatPay::new(
-        //     "app_id",
-        //     "mch_id",
-        //     private_key.as_str(),
-        //     "serial_no",
-        //     "v3_key",
-        //     "notifi_url",
-        // );
         let wechat_pay = WechatPay::from_env();
         let body = wechat_pay.native_pay(NativeConfig::new(
             "测试支付1分",
             "1243243",
             1.into(),
-        )).expect("native_pay error");
+        )).await.expect("pay fail");
         debug!("body: {:?}", body);
     }
 }

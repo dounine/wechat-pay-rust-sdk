@@ -13,8 +13,8 @@
 ## 使用指南
 引入依赖
 ```toml
-wechat-pay-rust-sdk = {version = "0.1.0"}
-#开启异步 wechat-pay-rust-sdk = {version = "0.1.0", features = ["async"]}
+wechat-pay-rust-sdk = {version = "0.1.0",features = ["blocking"]}
+#异步 wechat-pay-rust-sdk = {version = "0.1.0", features = ["async"]}
 ```
 
 ## native支付

@@ -24,30 +24,30 @@ unsafe impl Send for WechatPay {}
 unsafe impl Sync for WechatPay {}
 
 impl WechatPay {
-    pub fn appid(&self) -> String {
+    pub(crate) fn appid(&self) -> String {
         self.appid.clone()
     }
-    pub fn mch_id(&self) -> String {
+    pub(crate) fn mch_id(&self) -> String {
         self.mch_id.clone()
     }
-    pub fn private_key(&self) -> String {
+    pub(crate) fn private_key(&self) -> String {
         self.private_key.clone()
     }
-    pub fn serial_no(&self) -> String {
+    pub(crate) fn serial_no(&self) -> String {
         self.serial_no.clone()
     }
-    pub fn v3_key(&self) -> String {
+    pub(crate) fn v3_key(&self) -> String {
         self.v3_key.clone()
     }
-    pub fn notify_url(&self) -> String {
+    pub(crate) fn notify_url(&self) -> String {
         self.notify_url.clone()
     }
 
-    pub fn base_url(&self) -> String {
+    pub(crate) fn base_url(&self) -> String {
         self.base_url.clone()
     }
 
-    pub fn with_base_url(mut self, base_url: impl AsRef<str>) -> Self {
+    pub(crate) fn with_base_url(mut self, base_url: impl AsRef<str>) -> Self {
         self.base_url = base_url.as_ref().to_string();
         self
     }
@@ -82,12 +82,12 @@ impl WechatPay {
         Self::new(appid, mch_id, private_key, serial_no, v3_key, notify_url)
     }
 
-    pub fn rsa_sign(&self, content: impl AsRef<str>) -> String {
+    pub(crate) fn rsa_sign(&self, content: impl AsRef<str>) -> String {
         let private_key = self.private_key.as_ref();
         sign::sha256_sign(private_key, content.as_ref())
     }
 
-    pub fn build_header(&self,
+    pub(crate) fn build_header(&self,
                         method: HttpMethod,
                         url: impl AsRef<str>,
                         body: impl AsRef<str>,
