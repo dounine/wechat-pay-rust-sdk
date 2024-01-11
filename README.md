@@ -45,7 +45,7 @@ NativeResponse { code: None, message: None, code_url: Some("weixin://wxpay/bizpa
 ```
 ## h5支付
 
-``rust
+```rust
 use wechat_pay_rust_sdk::model::{H5Params, H5SceneInfo};
 use wechat_pay_rust_sdk::pay::WechatPay;
 use wechat_pay_rust_sdk::util;
@@ -63,7 +63,8 @@ let body = wechat_pay.h5_pay(H5Params::new(
 )).expect("h5_pay error");
 println!("body: {:?}", body);
 ```
+
 输出
-```rust
+```
 H5Response { code: None, message: None, h5_url: Some("https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx11154002858116623fasdfasdf&package=760499411") }
 ```
