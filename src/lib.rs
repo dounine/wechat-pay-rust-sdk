@@ -13,7 +13,7 @@
 //! ## 使用指南
 //! 引入依赖
 //! ```toml
-//! wechat-pay-rust-sdk = {version = "0.1.2",features = ["blocking"]}
+//! wechat-pay-rust-sdk = {version = "0.1.2", features = ["blocking"]}
 //! #异步 wechat-pay-rust-sdk = {version = "0.1.2", features = ["async"]}
 //! ```
 //!
