@@ -40,6 +40,36 @@ impl WechatPay {
             .await
             .map(Ok)?
     }
+    pub async fn jsapi_pay(&self, params: JsapiParams) -> Result<JsapiResponse, PayError> {
+        let url = "/v3/pay/transactions/jsapi";
+        let method = HttpMethod::POST;
+        let json_str = serde_json::to_string(&params)?;
+        debug!("jsapi_pay json_str: {}", json_str);
+        let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
+        map.insert("appid".to_owned(), self.appid().into());
+        map.insert("mchid".to_owned(), self.mch_id().into());
+        map.insert("notify_url".to_owned(), self.notify_url().into());
+
+        let body = serde_json::to_string(&map)?;
+        let headers = self.build_header(
+            method,
+            url,
+            body.as_str(),
+        )?;
+
+        let client = reqwest::blocking::Client::new();
+        let url = format!("{}{}", self.base_url(), url);
+        debug!("url: {}", url);
+        debug!("body: {}",body);
+        client.post(url)
+            .headers(headers)
+            .body(body)
+            .send()
+            .await?
+            .json::<JsapiResponse>()
+            .await
+            .map(Ok)?
+    }
     pub async fn native_pay(&self, params: NativeParams) -> Result<NativeResponse, PayError> {
         let url = "/v3/pay/transactions/native";
         let method = HttpMethod::POST;

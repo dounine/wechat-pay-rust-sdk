@@ -35,6 +35,14 @@ pub struct PayerInfo {
     pub openid: String,
 }
 
+impl From<&str> for PayerInfo {
+    fn from(value: &str) -> Self {
+        Self {
+            openid: value.to_string(),
+        }
+    }
+}
+
 unsafe impl Send for PayerInfo {}
 
 unsafe impl Sync for PayerInfo {}
@@ -180,8 +188,6 @@ pub struct JsapiParams {
     pub amount: AmountInfo,
     ///【支付者】 支付者信息
     pub payer: PayerInfo,
-    ///【通知地址】 异步接收微信支付结果通知的回调地址，通知URL必须为外网可访问的URL，不能携带参数。 公网域名必须为HTTPS，如果是走专线接入，使用专线NAT IP或者私有回调域名可使用HTTP
-    pub notify_url: String,
     ///【附加数据】 附加数据，在查询API和支付通知中原样返回，可作为自定义参数使用，实际情况下只有支付完成状态才会返回该字段。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attach: Option<String>,
@@ -194,6 +200,21 @@ pub struct JsapiParams {
     ///【场景信息】 支付场景描述
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scene_info: Option<SceneInfo>,
+}
+
+impl JsapiParams {
+    pub fn new<S: AsRef<str>>(description: S, out_trade_no: S, amount: AmountInfo, payer: PayerInfo) -> Self {
+        Self {
+            description: description.as_ref().to_string(),
+            out_trade_no: out_trade_no.as_ref().to_string(),
+            amount,
+            payer,
+            time_expire: None,
+            attach: None,
+            detail: None,
+            scene_info: None,
+        }
+    }
 }
 
 #[derive(Serialize, Debug, Clone)]

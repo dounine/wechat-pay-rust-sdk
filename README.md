@@ -10,7 +10,7 @@
 4. [h5支付](#h5支付)
 5. [小程序支付](#小程序支付)
 
-## 使用指南
+# 使用指南
 引入依赖
 ```toml
 wechat-pay-rust-sdk = {version = "0.1.2", features = ["blocking"]}
@@ -41,7 +41,11 @@ println!("body: {:?}", body);
 ```
 输出
 ```rust
-NativeResponse { code: None, message: None, code_url: Some("weixin://wxpay/bizpayurl?pr=yL2aIPzz") }
+NativeResponse { 
+    code: None, 
+    message: None, 
+    code_url: Some("weixin://wxpay/bizpayurl?pr=yL2aIPzz") 
+}
 ```
 ## h5支付
 
@@ -66,5 +70,35 @@ println!("body: {:?}", body);
 
 输出
 ```
-H5Response { code: None, message: None, h5_url: Some("https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx11154002858116623fasdfasdf&package=760499411") }
+H5Response { 
+    code: None, 
+    message: None, 
+    h5_url: Some("https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx11154002858116623fasdfasdf&package=760499411") 
+}
 ```
+
+## jsapi支付
+
+```rust
+use wechat_pay_rust_sdk::model::JsapiParams;
+use wechat_pay_rust_sdk::pay::WechatPay;
+
+let private_key_path = "./apiclient_key.pem";
+let private_key = std::fs::read_to_string(private_key_path).unwrap();
+let wechat_pay = WechatPay::from_env();
+let body = wechat_pay.jsapi_pay(JsapiParams::new(
+     "测试支付1分",
+     "1243243",
+     1.into(),
+     "open_id".into()
+     )).expect("jsapi_pay error");
+println!("body: {:?}", body);
+ ```
+ 输出
+ ```rust
+H5Response { 
+    code: None, 
+    message: None, 
+    prepay_id: Some("wx201410272009395522657a690389285100") 
+}
+ ```
