@@ -7,7 +7,7 @@ use crate::model::ParamsTrait;
 use crate::model::MicroParams;
 use crate::model::AppParams;
 use crate::model::H5Params;
-use crate::pay::WechatPay;
+use crate::pay::{WechatPay, WechatPayTrait};
 use crate::request::HttpMethod;
 use crate::response::NativeResponse;
 use crate::response::ResponseTrait;
@@ -17,7 +17,6 @@ use crate::response::AppResponse;
 use crate::response::H5Response;
 
 impl WechatPay {
-
     pub(crate) async fn pay<P: ParamsTrait, R: ResponseTrait>(&self, method: HttpMethod, url: &str, json: P) -> Result<R, PayError> {
         let json_str = json.to_json();
         debug!("json_str: {}", &json_str);
@@ -51,15 +50,39 @@ impl WechatPay {
     }
     pub async fn app_pay(&self, params: AppParams) -> Result<AppResponse, PayError> {
         let url = "/v3/pay/transactions/app";
-        self.pay(HttpMethod::POST, url, params).await
+        self
+            .pay(HttpMethod::POST, url, params)
+            .await
+            .map(|mut result: AppResponse| {
+                if let Some(prepay_id) = &result.prepay_id {
+                    result.sign_data = Some(self.mut_sign_data("", prepay_id));
+                }
+                result
+            })
     }
     pub async fn jsapi_pay(&self, params: JsapiParams) -> Result<JsapiResponse, PayError> {
         let url = "/v3/pay/transactions/jsapi";
-        self.pay(HttpMethod::POST, url, params).await
+        self
+            .pay(HttpMethod::POST, url, params)
+            .await
+            .map(|mut result: JsapiResponse| {
+                if let Some(prepay_id) = &result.prepay_id {
+                    result.sign_data = Some(self.mut_sign_data("", prepay_id));
+                }
+                result
+            })
     }
     pub async fn micro_pay(&self, params: MicroParams) -> Result<MicroResponse, PayError> {
         let url = "/v3/pay/transactions/jsapi";
-        self.pay(HttpMethod::POST, url, params).await
+        self
+            .pay(HttpMethod::POST, url, params)
+            .await
+            .map(|mut result: MicroResponse| {
+                if let Some(prepay_id) = &result.prepay_id {
+                    result.sign_data = Some(self.mut_sign_data("", prepay_id));
+                }
+                result
+            })
     }
     pub async fn native_pay(&self, params: NativeParams) -> Result<NativeResponse, PayError> {
         let url = "/v3/pay/transactions/native";

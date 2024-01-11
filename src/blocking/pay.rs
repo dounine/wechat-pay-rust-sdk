@@ -3,9 +3,9 @@ use serde_json::{Map, Value};
 use tracing::debug;
 use crate::error::PayError;
 use crate::model::{AppParams, H5Params, JsapiParams, MicroParams, NativeParams, ParamsTrait};
-use crate::pay::WechatPay;
+use crate::pay::{WechatPay, WechatPayTrait};
 use crate::request::HttpMethod;
-use crate::response::{AppResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse, ResponseTrait};
+use crate::response::{AppResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse, ResponseTrait, SignData};
 
 impl WechatPay {
     pub(crate) fn pay<P: ParamsTrait, R: ResponseTrait>(&self, method: HttpMethod, url: &str, json: P) -> Result<R, PayError> {
@@ -32,6 +32,7 @@ impl WechatPay {
             .json::<R>()
             .map(Ok)?
     }
+
     pub fn h5_pay(&self, params: H5Params) -> Result<H5Response, PayError> {
         let url = "/v3/pay/transactions/h5";
         self.pay(HttpMethod::POST, url, params)
@@ -43,17 +44,52 @@ impl WechatPay {
 
     pub fn app_pay(&self, params: AppParams) -> Result<AppResponse, PayError> {
         let url = "/v3/pay/transactions/app";
-        self.pay(HttpMethod::POST, url, params)
+        self
+            .pay(HttpMethod::POST, url, params)
+            .map(|mut result: AppResponse| {
+                if let Some(prepay_id) = &result.prepay_id {
+                    result.sign_data = Some(self.mut_sign_data("", prepay_id));
+                }
+                result
+            })
     }
 
     pub fn micro_pay(&self, params: MicroParams) -> Result<MicroResponse, PayError> {
         let url = "/v3/pay/transactions/jsapi";
-        self.pay(HttpMethod::POST, url, params)
+        self
+            .pay(HttpMethod::POST, url, params)
+            .map(|mut result: MicroResponse| {
+                if let Some(prepay_id) = &result.prepay_id {
+                    result.sign_data = Some(self.mut_sign_data("prepay_id=", prepay_id));
+                }
+                result
+            })
     }
 
+    /// jsapi支付
+    /// ```rust
+    /// use wechat_pay_rust_sdk::model::JsapiParams;
+    /// use wechat_pay_rust_sdk::pay::WechatPay;
+    /// let wechat_pay = WechatPay::from_env();
+    ///
+    /// let body = wechat_pay.jsapi_pay(JsapiParams::new(
+    /// "测试支付1分",
+    /// "1243243",
+    /// 1.into(),
+    /// "open_id".into(),
+    /// )).expect("jsapi_pay error");
+    /// println!("body: {:?}", body);
+    /// ```
     pub fn jsapi_pay(&self, params: JsapiParams) -> Result<JsapiResponse, PayError> {
         let url = "/v3/pay/transactions/jsapi";
-        self.pay(HttpMethod::POST, url, params)
+        self
+            .pay(HttpMethod::POST, url, params)
+            .map(|mut result: JsapiResponse| {
+                if let Some(prepay_id) = &result.prepay_id {
+                    result.sign_data = Some(self.mut_sign_data("prepay_id=", prepay_id));
+                }
+                result
+            })
     }
 }
 

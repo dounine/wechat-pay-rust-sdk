@@ -1,5 +1,5 @@
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 pub trait ResponseTrait: DeserializeOwned {}
 
@@ -19,6 +19,18 @@ pub struct JsapiResponse {
     pub message: Option<String>,
     ///【预支付交易会话标识】 预支付交易会话标识。用于后续接口调用中使用，该值有效期为2小时
     pub prepay_id: Option<String>,
+    ///【签名数据】
+    pub sign_data: Option<SignData>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SignData {
+    pub app_id: String,
+    pub sign_type: String,
+    pub package: String,
+    pub nonce_str: String,
+    pub timestamp: String,
+    pub pay_sign: String,
 }
 
 impl ResponseTrait for JsapiResponse {}
@@ -29,6 +41,8 @@ pub struct AppResponse {
     pub message: Option<String>,
     ///【预支付交易会话标识】 预支付交易会话标识。用于后续接口调用中使用，该值有效期为2小时
     pub prepay_id: Option<String>,
+    ///【签名数据】
+    pub sign_data: Option<SignData>,
 }
 
 impl ResponseTrait for AppResponse {}
@@ -39,6 +53,8 @@ pub struct MicroResponse {
     pub message: Option<String>,
     ///【预支付交易会话标识】 预支付交易会话标识。用于后续接口调用中使用，该值有效期为2小时
     pub prepay_id: Option<String>,
+    ///【签名数据】
+    pub sign_data: Option<SignData>,
 }
 
 impl ResponseTrait for MicroResponse {}

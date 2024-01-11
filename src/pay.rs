@@ -7,6 +7,7 @@ use crate::request::HttpMethod;
 use crate::sign;
 use uuid::Uuid;
 use crate::error::PayError;
+use crate::response::SignData;
 
 #[derive(Debug)]
 pub struct WechatPay {
@@ -23,35 +24,85 @@ unsafe impl Send for WechatPay {}
 
 unsafe impl Sync for WechatPay {}
 
-impl WechatPay {
-    pub(crate) fn appid(&self) -> String {
+pub(crate) trait WechatPayTrait {
+    fn appid(&self) -> String;
+    fn mch_id(&self) -> String;
+    fn private_key(&self) -> String;
+    fn serial_no(&self) -> String;
+    fn v3_key(&self) -> String;
+    fn notify_url(&self) -> String;
+    fn base_url(&self) -> String;
+    fn rsa_sign(&self, content: impl AsRef<str>) -> String;
+    fn now_timestamp(&self) -> String {
+        chrono::Local::now().timestamp().to_string()
+    }
+    fn nonce_str(&self) -> String {
+        Uuid::new_v4()
+            .to_string()
+            .replace("-", "")
+            .to_uppercase()
+    }
+
+    fn mut_sign_data<S>(&self, prefix: S, prepay_id: S) -> SignData
+        where S: AsRef<str>
+    {
+        let app_id = self.appid();
+        let now_time = self.now_timestamp();
+        let nonce_str = self.nonce_str();
+        let ext_str = format!("{prefix}{prepay_id}", prefix = prefix.as_ref(), prepay_id = prepay_id.as_ref());
+        let signed_str = self.rsa_sign(
+            format!(
+                "{app_id}\n{now_time}\n{nonce_str}\n{ext_str}\n"
+            )
+        );
+        SignData {
+            app_id,
+            sign_type: "RSA".into(),
+            package: ext_str,
+            nonce_str,
+            timestamp: now_time,
+            pay_sign: signed_str,
+        }
+    }
+
+}
+
+impl WechatPayTrait for WechatPay {
+    fn appid(&self) -> String {
         self.appid.clone()
     }
-    pub(crate) fn mch_id(&self) -> String {
+    fn mch_id(&self) -> String {
         self.mch_id.clone()
     }
-    pub(crate) fn private_key(&self) -> String {
+    fn private_key(&self) -> String {
         self.private_key.clone()
     }
-    pub(crate) fn serial_no(&self) -> String {
+    fn serial_no(&self) -> String {
         self.serial_no.clone()
     }
-    pub(crate) fn v3_key(&self) -> String {
+    fn v3_key(&self) -> String {
         self.v3_key.clone()
     }
-    pub(crate) fn notify_url(&self) -> String {
+    fn notify_url(&self) -> String {
         self.notify_url.clone()
     }
 
-    pub(crate) fn base_url(&self) -> String {
+    fn base_url(&self) -> String {
         self.base_url.clone()
     }
 
-    pub(crate) fn with_base_url(mut self, base_url: impl AsRef<str>) -> Self {
+    fn rsa_sign(&self, content: impl AsRef<str>) -> String {
+        let private_key = self.private_key.as_ref();
+        sign::sha256_sign(private_key, content.as_ref())
+    }
+
+}
+
+impl WechatPay {
+    fn with_base_url(mut self, base_url: impl AsRef<str>) -> Self {
         self.base_url = base_url.as_ref().to_string();
         self
     }
-
     pub fn new<S: AsRef<str>>(
         appid: S,
         mch_id: S,
@@ -82,15 +133,11 @@ impl WechatPay {
         Self::new(appid, mch_id, private_key, serial_no, v3_key, notify_url)
     }
 
-    pub(crate) fn rsa_sign(&self, content: impl AsRef<str>) -> String {
-        let private_key = self.private_key.as_ref();
-        sign::sha256_sign(private_key, content.as_ref())
-    }
 
     pub(crate) fn build_header(&self,
-                        method: HttpMethod,
-                        url: impl AsRef<str>,
-                        body: impl AsRef<str>,
+                               method: HttpMethod,
+                               url: impl AsRef<str>,
+                               body: impl AsRef<str>,
     ) -> Result<HeaderMap, PayError> {
         let method = method.to_string();
         let url = url.as_ref();
@@ -135,7 +182,7 @@ impl WechatPay {
 mod tests {
     use tracing::debug;
     use uuid::Uuid;
-    use crate::pay::WechatPay;
+    use crate::pay::{WechatPay, WechatPayTrait};
 
     #[inline]
     fn init_log() {
