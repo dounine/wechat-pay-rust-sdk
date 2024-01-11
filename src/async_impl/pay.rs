@@ -3,12 +3,14 @@ use tracing::debug;
 use crate::error::PayError;
 use crate::model::NativeParams;
 use crate::model::JsapiParams;
+use crate::model::MicroParams;
 use crate::model::AppParams;
 use crate::model::H5Params;
 use crate::pay::WechatPay;
 use crate::request::HttpMethod;
 use crate::response::NativeResponse;
 use crate::response::JsapiResponse;
+use crate::response::MicroResponse;
 use crate::response::AppResponse;
 use crate::response::H5Response;
 
@@ -101,6 +103,36 @@ impl WechatPay {
             .send()
             .await?
             .json::<JsapiResponse>()
+            .await
+            .map(Ok)?
+    }
+    pub async fn micro_pay(&self, params: MicroParams) -> Result<MicroResponse, PayError> {
+        let url = "/v3/pay/transactions/jsapi";
+        let method = HttpMethod::POST;
+        let json_str = serde_json::to_string(&params)?;
+        debug!("native_pay json_str: {}", json_str);
+        let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
+        map.insert("appid".to_owned(), self.appid().into());
+        map.insert("mchid".to_owned(), self.mch_id().into());
+        map.insert("notify_url".to_owned(), self.notify_url().into());
+
+        let body = serde_json::to_string(&map)?;
+        let headers = self.build_header(
+            method,
+            url,
+            body.as_str(),
+        )?;
+
+        let client = reqwest::Client::new();
+        let url = format!("{}{}", self.base_url(), url);
+        debug!("url: {}", url);
+        debug!("body: {}",body);
+        client.post(url)
+            .headers(headers)
+            .body(body)
+            .send()
+            .await?
+            .json::<MicroResponse>()
             .await
             .map(Ok)?
     }
