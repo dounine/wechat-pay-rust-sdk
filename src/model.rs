@@ -1,7 +1,8 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Formatter};
 use serde::Serialize;
+use strum_macros::Display;
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Display, Debug, Clone)]
 pub enum Currency {
     CNY,
 }
@@ -9,14 +10,6 @@ pub enum Currency {
 unsafe impl Send for Currency {}
 
 unsafe impl Sync for Currency {}
-
-impl Display for Currency {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Currency::CNY => write!(f, "CNY"),
-        }
-    }
-}
 
 #[derive(Serialize, Debug, Clone)]
 pub struct AmountInfo {
@@ -113,21 +106,14 @@ pub struct SceneInfo {
 }
 
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Display, Debug, Clone)]
 pub enum H5Type {
+    #[strum(serialize = "iOS")]
     Ios,
+    #[strum(serialize = "Android")]
     Android,
+    #[strum(serialize = "Wap")]
     Wap,
-}
-
-impl Display for H5Type {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            H5Type::Ios => write!(f, "iOS"),
-            H5Type::Android => write!(f, "Android"),
-            H5Type::Wap => write!(f, "Wap"),
-        }
-    }
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -315,7 +301,6 @@ impl NativeParams {
 unsafe impl Send for NativeParams {}
 
 unsafe impl Sync for NativeParams {}
-
 
 unsafe impl Send for JsapiParams {}
 
