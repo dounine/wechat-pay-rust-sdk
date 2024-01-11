@@ -2,10 +2,12 @@ use serde_json::{Map, Value};
 use tracing::debug;
 use crate::error::PayError;
 use crate::model::NativeParams;
+use crate::model::JsapiParams;
 use crate::model::H5Params;
 use crate::pay::WechatPay;
 use crate::request::HttpMethod;
 use crate::response::NativeResponse;
+use crate::response::JsapiResponse;
 use crate::response::H5Response;
 
 impl WechatPay {
@@ -57,7 +59,7 @@ impl WechatPay {
             body.as_str(),
         )?;
 
-        let client = reqwest::blocking::Client::new();
+        let client = reqwest::Client::new();
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {}", url);
         debug!("body: {}",body);
