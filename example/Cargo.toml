@@ -8,5 +8,5 @@ publish = false
 
 [dependencies]
 dotenvy = "0.15.7"
-wechat-pay-rust-sdk = { path = "..",features = ["blocking"]}
+wechat-pay-rust-sdk = { path = ".."}
 tokio = { version = "1.35.1",features = ["full"] }
