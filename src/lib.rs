@@ -20,7 +20,7 @@
 //! ## native支付
 //!
 //!```rust
-//! use wechat_pay_rust_sdk::model::NativeConfig;
+//! use wechat_pay_rust_sdk::model::NativeParams;
 //! use wechat_pay_rust_sdk::pay::WechatPay;
 //! let private_key_path = "./apiclient_key.pem";
 //! let private_key = std::fs::read_to_string(private_key_path).unwrap();
@@ -32,7 +32,7 @@
 //!     "v3_key",
 //!     "notifi_url",
 //! );
-//! let body = wechat_pay.native_pay(NativeConfig::new(
+//! let body = wechat_pay.native_pay(NativeParams::new(
 //!     "测试支付1分",
 //!     "124324343",
 //!     1.into(),
@@ -43,13 +43,36 @@
 //! ```rust
 //! NativeResponse { code: None, message: None, code_url: Some("weixin://wxpay/bizpayurl?pr=yL2aIPzz") }
 //! ```
+//!
+//! ## h5支付
+//!
+//!```rust
+//! use wechat_pay_rust_sdk::model::{H5Params, H5SceneInfo};
+//! use wechat_pay_rust_sdk::pay::WechatPay;
+//! use wechat_pay_rust_sdk::util;
+//!
+//! let wechat_pay = WechatPay::from_env();
+//! let body = wechat_pay.h5_pay(H5Params::new(
+//!     "支付1分",
+//!     util::random_trade_no().as_str(),
+//!     1.into(),
+//!     H5SceneInfo::new(
+//!            "183.6.105.1", //填写客户端IP
+//!            "我的网站",
+//!            "https://mydomain.com",
+//!    ),
+//! )).expect("h5_pay error");
+//! println!("body: {:?}", body);
+//! ```
+//! 输出
+//! ```rust
+//! H5Response { code: None, message: None, h5_url: Some("https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx11154002858116623fasdfasdf&package=760499411") }
+//! ```
 
-cfg_if::cfg_if!{
+cfg_if::cfg_if! {
     if #[cfg(feature = "blocking")] {
-        // #[cfg(feature = "blocking")]
         pub mod blocking;
     } else if #[cfg(feature = "async")] {
-        // #[cfg(feature = "async")]
         pub mod async_impl;
     }
 }
