@@ -6,9 +6,7 @@ use crate::pay::WechatPay;
 use crate::request::HttpMethod;
 use crate::response::NativeResponse;
 
-#[cfg(feature = "blocking")]
 impl WechatPay {
-    #[cfg(feature = "blocking")]
     pub fn native_pay(&self, body: NativeConfig) -> Result<NativeResponse, PayError> {
         let url = "/v3/pay/transactions/native";
         let method = HttpMethod::POST;

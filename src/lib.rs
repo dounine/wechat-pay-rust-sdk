@@ -46,10 +46,10 @@
 
 cfg_if::cfg_if!{
     if #[cfg(feature = "blocking")] {
-        #[cfg(feature = "blocking")]
+        // #[cfg(feature = "blocking")]
         pub mod blocking;
     } else if #[cfg(feature = "async")] {
-        #[cfg(feature = "async")]
+        // #[cfg(feature = "async")]
         pub mod async_impl;
     }
 }
