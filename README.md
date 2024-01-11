@@ -85,8 +85,6 @@ H5Response {
 use wechat_pay_rust_sdk::model::JsapiParams;
 use wechat_pay_rust_sdk::pay::WechatPay;
 
-let private_key_path = "./apiclient_key.pem";
-let private_key = std::fs::read_to_string(private_key_path).unwrap();
 let wechat_pay = WechatPay::from_env();
 let body = wechat_pay.jsapi_pay(JsapiParams::new(
      "测试支付1分",
@@ -99,6 +97,29 @@ println!("body: {:?}", body);
  输出
  ```rust
 H5Response { 
+    code: None, 
+    message: None, 
+    prepay_id: Some("wx201410272009395522657a690389285100") 
+}
+ ```
+
+## app支付
+
+```rust
+use wechat_pay_rust_sdk::model::AppParams;
+use wechat_pay_rust_sdk::pay::WechatPay;
+
+let wechat_pay = WechatPay::from_env();
+let body = wechat_pay.app_pay(AppParams::new(
+     "测试支付1分",
+     "1243243",
+     1.into()
+     )).expect("app_pay error");
+println!("body: {:?}", body);
+ ```
+输出
+ ```rust
+AppResponse { 
     code: None, 
     message: None, 
     prepay_id: Some("wx201410272009395522657a690389285100") 
