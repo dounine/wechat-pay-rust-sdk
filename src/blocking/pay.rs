@@ -1,29 +1,26 @@
+use serde::Deserialize;
 use serde_json::{Map, Value};
 use tracing::debug;
 use crate::error::PayError;
-use crate::model::{AppParams, H5Params, JsapiParams, MicroParams, NativeParams};
+use crate::model::{AppParams, H5Params, JsapiParams, MicroParams, NativeParams, ParamsTrait};
 use crate::pay::WechatPay;
 use crate::request::HttpMethod;
-use crate::response::{AppResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse};
+use crate::response::{AppResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse, ResponseTrait};
 
 impl WechatPay {
-    pub fn h5_pay(&self, params: H5Params) -> Result<H5Response, PayError> {
-        let url = "/v3/pay/transactions/h5";
-        let method = HttpMethod::POST;
-        let json_str = serde_json::to_string(&params)?;
-        debug!("h5_pay json_str: {}", json_str);
+    pub(crate) fn pay<P: ParamsTrait, R: ResponseTrait>(&self, method: HttpMethod, url: &str, json: P) -> Result<R, PayError> {
+        let json_str = json.to_json();
+        debug!("json_str: {}", &json_str);
         let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
         map.insert("appid".to_owned(), self.appid().into());
         map.insert("mchid".to_owned(), self.mch_id().into());
         map.insert("notify_url".to_owned(), self.notify_url().into());
-
         let body = serde_json::to_string(&map)?;
         let headers = self.build_header(
             method,
             url,
             body.as_str(),
         )?;
-
         let client = reqwest::blocking::Client::new();
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {}", url);
@@ -32,123 +29,31 @@ impl WechatPay {
             .headers(headers)
             .body(body)
             .send()?
-            .json::<H5Response>()
+            .json::<R>()
             .map(Ok)?
+    }
+    pub fn h5_pay(&self, params: H5Params) -> Result<H5Response, PayError> {
+        let url = "/v3/pay/transactions/h5";
+        self.pay(HttpMethod::POST, url, params)
     }
     pub fn native_pay(&self, params: NativeParams) -> Result<NativeResponse, PayError> {
         let url = "/v3/pay/transactions/native";
-        let method = HttpMethod::POST;
-        let json_str = serde_json::to_string(&params)?;
-        debug!("native_pay json_str: {}", json_str);
-        let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
-        map.insert("appid".to_owned(), self.appid().into());
-        map.insert("mchid".to_owned(), self.mch_id().into());
-        map.insert("notify_url".to_owned(), self.notify_url().into());
-
-        let body = serde_json::to_string(&map)?;
-        let headers = self.build_header(
-            method,
-            url,
-            body.as_str(),
-        )?;
-
-        let client = reqwest::blocking::Client::new();
-        let url = format!("{}{}", self.base_url(), url);
-        debug!("url: {}", url);
-        debug!("body: {}",body);
-        client.post(url)
-            .headers(headers)
-            .body(body)
-            .send()?
-            .json::<NativeResponse>()
-            .map(Ok)?
+        self.pay(HttpMethod::POST, url, params)
     }
 
     pub fn app_pay(&self, params: AppParams) -> Result<AppResponse, PayError> {
         let url = "/v3/pay/transactions/app";
-        let method = HttpMethod::POST;
-        let json_str = serde_json::to_string(&params)?;
-        debug!("native_pay json_str: {}", json_str);
-        let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
-        map.insert("appid".to_owned(), self.appid().into());
-        map.insert("mchid".to_owned(), self.mch_id().into());
-        map.insert("notify_url".to_owned(), self.notify_url().into());
-
-        let body = serde_json::to_string(&map)?;
-        let headers = self.build_header(
-            method,
-            url,
-            body.as_str(),
-        )?;
-
-        let client = reqwest::blocking::Client::new();
-        let url = format!("{}{}", self.base_url(), url);
-        debug!("url: {}", url);
-        debug!("body: {}",body);
-        client.post(url)
-            .headers(headers)
-            .body(body)
-            .send()?
-            .json::<AppResponse>()
-            .map(Ok)?
+        self.pay(HttpMethod::POST, url, params)
     }
 
     pub fn micro_pay(&self, params: MicroParams) -> Result<MicroResponse, PayError> {
         let url = "/v3/pay/transactions/jsapi";
-        let method = HttpMethod::POST;
-        let json_str = serde_json::to_string(&params)?;
-        debug!("native_pay json_str: {}", json_str);
-        let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
-        map.insert("appid".to_owned(), self.appid().into());
-        map.insert("mchid".to_owned(), self.mch_id().into());
-        map.insert("notify_url".to_owned(), self.notify_url().into());
-
-        let body = serde_json::to_string(&map)?;
-        let headers = self.build_header(
-            method,
-            url,
-            body.as_str(),
-        )?;
-
-        let client = reqwest::blocking::Client::new();
-        let url = format!("{}{}", self.base_url(), url);
-        debug!("url: {}", url);
-        debug!("body: {}",body);
-        client.post(url)
-            .headers(headers)
-            .body(body)
-            .send()?
-            .json::<MicroResponse>()
-            .map(Ok)?
+        self.pay(HttpMethod::POST, url, params)
     }
 
     pub fn jsapi_pay(&self, params: JsapiParams) -> Result<JsapiResponse, PayError> {
         let url = "/v3/pay/transactions/jsapi";
-        let method = HttpMethod::POST;
-        let json_str = serde_json::to_string(&params)?;
-        debug!("jsapi_pay json_str: {}", json_str);
-        let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
-        map.insert("appid".to_owned(), self.appid().into());
-        map.insert("mchid".to_owned(), self.mch_id().into());
-        map.insert("notify_url".to_owned(), self.notify_url().into());
-
-        let body = serde_json::to_string(&map)?;
-        let headers = self.build_header(
-            method,
-            url,
-            body.as_str(),
-        )?;
-
-        let client = reqwest::blocking::Client::new();
-        let url = format!("{}{}", self.base_url(), url);
-        debug!("url: {}", url);
-        debug!("body: {}",body);
-        client.post(url)
-            .headers(headers)
-            .body(body)
-            .send()?
-            .json::<JsapiResponse>()
-            .map(Ok)?
+        self.pay(HttpMethod::POST, url, params)
     }
 }
 
@@ -190,7 +95,7 @@ mod tests {
             "测试支付1分",
             "1243243",
             1.into(),
-            "open_id".into()
+            "open_id".into(),
         )).expect("jsapi_pay error");
         debug!("body: {:?}", body);
     }

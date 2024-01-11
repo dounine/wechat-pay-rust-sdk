@@ -2,6 +2,10 @@ use std::fmt::{Formatter};
 use serde::Serialize;
 use strum_macros::Display;
 
+pub trait ParamsTrait {
+    fn to_json(&self) -> String;
+}
+
 #[derive(Serialize, Display, Debug, Clone)]
 pub enum Currency {
     CNY,
@@ -178,6 +182,12 @@ unsafe impl Send for SceneInfo {}
 
 unsafe impl Sync for SceneInfo {}
 
+impl ParamsTrait for SceneInfo {
+    fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub struct JsapiParams {
     ///【商品描述】 商品描述
@@ -202,6 +212,12 @@ pub struct JsapiParams {
     pub scene_info: Option<SceneInfo>,
 }
 
+impl ParamsTrait for JsapiParams {
+    fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub struct MicroParams {
     ///【商品描述】 商品描述
@@ -224,6 +240,12 @@ pub struct MicroParams {
     ///【场景信息】 支付场景描述
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scene_info: Option<SceneInfo>,
+}
+
+impl ParamsTrait for MicroParams {
+    fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
 }
 
 impl MicroParams {
@@ -297,6 +319,12 @@ pub struct NativeParams {
     pub settle_info: Option<SettleInfo>,
 }
 
+impl ParamsTrait for NativeParams {
+    fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub struct AppParams {
     ///【商品描述】 商品描述
@@ -330,7 +358,13 @@ pub struct AppParams {
     pub settle_info: Option<SettleInfo>,
 }
 
-impl AppParams{
+impl ParamsTrait for AppParams{
+    fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}
+
+impl AppParams {
     pub fn new<S: AsRef<str>>(description: S, out_trade_no: S, amount: AmountInfo) -> Self {
         Self {
             description: description.as_ref().to_string(),
@@ -345,7 +379,6 @@ impl AppParams{
             settle_info: None,
         }
     }
-
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -375,6 +408,13 @@ pub struct H5Params {
     ///【结算信息】 结算信息
     #[serde(skip_serializing_if = "Option::is_none")]
     pub settle_info: Option<SettleInfo>,
+}
+
+impl ParamsTrait for H5Params{
+    fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+
 }
 
 impl H5Params {

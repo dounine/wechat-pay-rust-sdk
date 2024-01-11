@@ -1,4 +1,7 @@
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
+
+pub trait ResponseTrait: DeserializeOwned {}
 
 #[derive(Debug, Deserialize)]
 pub struct NativeResponse {
@@ -8,6 +11,8 @@ pub struct NativeResponse {
     pub code_url: Option<String>,
 }
 
+impl ResponseTrait for NativeResponse {}
+
 #[derive(Debug, Deserialize)]
 pub struct JsapiResponse {
     pub code: Option<String>,
@@ -15,6 +20,8 @@ pub struct JsapiResponse {
     ///【预支付交易会话标识】 预支付交易会话标识。用于后续接口调用中使用，该值有效期为2小时
     pub prepay_id: Option<String>,
 }
+
+impl ResponseTrait for JsapiResponse {}
 
 #[derive(Debug, Deserialize)]
 pub struct AppResponse {
@@ -24,6 +31,8 @@ pub struct AppResponse {
     pub prepay_id: Option<String>,
 }
 
+impl ResponseTrait for AppResponse {}
+
 #[derive(Debug, Deserialize)]
 pub struct MicroResponse {
     pub code: Option<String>,
@@ -31,6 +40,8 @@ pub struct MicroResponse {
     ///【预支付交易会话标识】 预支付交易会话标识。用于后续接口调用中使用，该值有效期为2小时
     pub prepay_id: Option<String>,
 }
+
+impl ResponseTrait for MicroResponse {}
 
 #[derive(Debug, Deserialize)]
 pub struct H5Response {
@@ -40,3 +51,5 @@ pub struct H5Response {
     /// 注意：code_url并非固定值，使用时按照URL格式转成二维码即可。
     pub h5_url: Option<String>,
 }
+
+impl ResponseTrait for H5Response {}
