@@ -1,5 +1,5 @@
 use std::fmt::{Formatter};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 
 pub trait ParamsTrait {
@@ -15,7 +15,7 @@ unsafe impl Send for Currency {}
 
 unsafe impl Sync for Currency {}
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AmountInfo {
     ///【标价金额】 订单总金额，单位为分。
     pub total: i32,
@@ -33,7 +33,7 @@ unsafe impl Send for AmountInfo {}
 
 unsafe impl Sync for AmountInfo {}
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PayerInfo {
     ///【用户标识】 用户在直连商户appid下的唯一标识。
     pub openid: String,
@@ -358,7 +358,7 @@ pub struct AppParams {
     pub settle_info: Option<SettleInfo>,
 }
 
-impl ParamsTrait for AppParams{
+impl ParamsTrait for AppParams {
     fn to_json(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
@@ -410,11 +410,10 @@ pub struct H5Params {
     pub settle_info: Option<SettleInfo>,
 }
 
-impl ParamsTrait for H5Params{
+impl ParamsTrait for H5Params {
     fn to_json(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
-
 }
 
 impl H5Params {
@@ -456,3 +455,38 @@ unsafe impl Sync for NativeParams {}
 unsafe impl Send for JsapiParams {}
 
 unsafe impl Sync for JsapiParams {}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PayNotifySource {
+    pub algorithm: String,
+    pub ciphertext: String,
+    pub associated_data: Option<String>,
+    pub original_type: String,
+    pub nonce: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PayNotify {
+    pub id: String,
+    pub create_time: String,
+    pub event_type: String,
+    pub resource_type: String,
+    pub resource: PayNotifySource,
+    pub summary: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PayDecodeData {
+    pub mchid: String,
+    pub appid: String,
+    pub out_trade_no: String,
+    pub transaction_id: String,
+    pub trade_type: String,
+    pub trade_state: String,
+    pub trade_state_desc: String,
+    pub bank_type: String,
+    pub attach: String,
+    pub success_time: String,
+    pub payer: PayerInfo,
+    pub amount: AmountInfo,
+}

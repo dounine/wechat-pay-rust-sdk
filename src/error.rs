@@ -6,4 +6,8 @@ pub enum PayError {
     WechatError(String),
     #[error("json error: {0}")]
     JsonError(#[from] serde_json::Error),
+    #[error("Decrypt error: {0}")]
+    DecryptError(String),
+    #[error("Base64 decode error: {0}")]
+    DecodeError(#[from] base64::DecodeError),
 }

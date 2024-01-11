@@ -1,4 +1,6 @@
+use std::str::from_utf8;
 use base64::Engine;
+use base64::engine::general_purpose;
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, USER_AGENT};
 use rsa::pkcs8::DecodePrivateKey;
 use sha2::Digest;
@@ -8,6 +10,9 @@ use crate::sign;
 use uuid::Uuid;
 use crate::error::PayError;
 use crate::response::SignData;
+use aes_gcm::{aead::{AeadCore, AeadInPlace, KeyInit, OsRng}, Aes256Gcm, Key, Nonce};
+use aes_gcm::aead::{AeadMut, Payload};
+use crate::model::PayDecodeData;
 
 #[derive(Debug)]
 pub struct WechatPay {
@@ -23,6 +28,27 @@ pub struct WechatPay {
 unsafe impl Send for WechatPay {}
 
 unsafe impl Sync for WechatPay {}
+
+pub(crate) trait PayNotifyTrait: WechatPayTrait {
+    fn decrypt<S>(&self, ciphertext: S, nonce: S, associated_data: S) -> Result<PayDecodeData, PayError>
+        where S: AsRef<str>
+    {
+        let v3_key = self.v3_key();
+        let ciphertext = general_purpose::STANDARD.decode(ciphertext.as_ref())?;
+        let aes_key = v3_key.as_str().as_bytes();
+        let key = Key::<Aes256Gcm>::from_slice(aes_key);
+        let mut cipher = Aes256Gcm::new(&key);
+        let nonce = Nonce::from_slice(&ciphertext[0..12]);
+        let payload = Payload {
+            msg: &ciphertext[12..],
+            aad: &associated_data.as_ref().as_bytes(),
+        };
+        let plaintext = cipher.decrypt(nonce, payload)
+            .map_err(|e| PayError::DecryptError(e.to_string()))?;
+        let data: PayDecodeData = serde_json::from_slice(&plaintext)?;
+        Ok(data)
+    }
+}
 
 pub(crate) trait WechatPayTrait {
     fn appid(&self) -> String;
@@ -64,7 +90,6 @@ pub(crate) trait WechatPayTrait {
             pay_sign: signed_str,
         }
     }
-
 }
 
 impl WechatPayTrait for WechatPay {
@@ -95,7 +120,6 @@ impl WechatPayTrait for WechatPay {
         let private_key = self.private_key.as_ref();
         sign::sha256_sign(private_key, content.as_ref())
     }
-
 }
 
 impl WechatPay {
