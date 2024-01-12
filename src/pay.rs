@@ -33,6 +33,9 @@ pub(crate) trait PayNotifyTrait: WechatPayTrait {
     fn decrypt<S>(&self, ciphertext: S, nonce: S, associated_data: S) -> Result<PayDecodeData, PayError>
         where S: AsRef<str>
     {
+        if nonce.as_ref().len() != 12 {
+            return Err(PayError::DecryptError("nonce length must be 12".to_string()));
+        }
         let v3_key = self.v3_key();
         let ciphertext = general_purpose::STANDARD.decode(ciphertext.as_ref())?;
         let aes_key = v3_key.as_str().as_bytes();
@@ -208,8 +211,9 @@ mod tests {
     use aes_gcm::{Aes256Gcm, KeyInit};
     use aes_gcm::aead::{Aead, Payload};
     use dotenvy::dotenv;
-    use tracing::debug;
+    use tracing::{debug, error};
     use uuid::Uuid;
+    use crate::error::PayError;
     use crate::model::PayDecodeData;
     use crate::pay::{PayNotifyTrait, WechatPay, WechatPayTrait};
 
