@@ -124,7 +124,7 @@ impl WechatPay {
         let url = "/v3/certificates";
         self.get_pay(url).await
     }
-    pub async fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<String, PayError>
+    pub async fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<Option<String>, PayError>
         where S: AsRef<str>
     {
         let client = reqwest::Client::new();
@@ -140,8 +140,12 @@ impl WechatPay {
         text
             .split("\n")
             .find(|line| line.contains("weixin://"))
-            .map(|line| Ok(line.to_string()))
-            .ok_or_else(|| PayError::WeixinNotFound)?
+            .map(|line|{
+                line.split(r#"""#)
+                    .find(|line| line.contains("weixin://"))
+                    .map(|line| line.to_string())
+            })
+            .ok_or_else(|| PayError::WeixinNotFound)
     }
 }
 

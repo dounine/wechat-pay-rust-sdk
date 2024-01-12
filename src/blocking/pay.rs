@@ -120,7 +120,7 @@ impl WechatPay {
                 result
             })
     }
-    pub fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<String, PayError>
+    pub fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<Option<String>, PayError>
         where S: AsRef<str>
     {
         let client = reqwest::blocking::Client::new();
@@ -134,8 +134,12 @@ impl WechatPay {
         text
             .split("\n")
             .find(|line| line.contains("weixin://"))
-            .map(|line| Ok(line.to_string()))
-            .ok_or_else(|| PayError::WeixinNotFound)?
+            .map(|line|{
+                line.split(r#"""#)
+                    .find(|line| line.contains("weixin://"))
+                    .map(|line| line.to_string())
+            })
+            .ok_or_else(|| PayError::WeixinNotFound)
     }
     pub fn certificates(&self) -> Result<CertificateResponse, PayError> {
         let url = "/v3/certificates";
@@ -230,12 +234,10 @@ mod tests {
             "测试支付1分",
             util::random_trade_no().as_str(),
             1.into(),
-            H5SceneInfo::new("183.6.105.141", "ipa软件下载", "https://ipadump.com"),
+            H5SceneInfo::new("183.6.105.141", "ipa软件下载", "https://mydomain.com"),
         )).expect("h5_pay error");
-        let weixin_url = wechat_pay.get_weixin(body.h5_url.unwrap().as_str(), "https://ipadump.com").unwrap();
-        let weixin_url = weixin_url.split(r#"""#)
-            .find(|line| line.contains("weixin://")).unwrap();
-        debug!("weixin_url: {}", weixin_url);
+        let weixin_url = wechat_pay.get_weixin(body.h5_url.unwrap().as_str(), "https://mydomain.com").unwrap();
+        debug!("weixin_url: {}", weixin_url.unwrap());
     }
 
     #[test]

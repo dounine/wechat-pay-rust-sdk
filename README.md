@@ -81,6 +81,21 @@ H5Response {
     h5_url: Some("https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx11154002858116623fasdfasdf&package=760499411") 
 }
 ```
+h5_url转换成微信支付链接
+```rust
+let body = wechat_pay.h5_pay(H5Params::new(
+    "测试支付1分",
+    util::random_trade_no().as_str(),
+    1.into(),
+    H5SceneInfo::new("183.6.105.141", "软件", "https://mydomain.com"),
+)).expect("h5_pay error");
+let weixin_url = wechat_pay.get_weixin(body.h5_url.unwrap().as_str(), "https://mydomain.com").unwrap();
+println!("weixin_url: {}", weixin_url.unwrap());
+```
+输出
+```
+weixin://wap/pay?prepayid%3Dwx13013716281xa5df8313490000&package=35748946&noncestr=1705081036&sign=8d988c82ded5fb02f097d6f1d70
+```
 
 ## jsapi支付
 
