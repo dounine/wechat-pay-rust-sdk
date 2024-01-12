@@ -36,14 +36,12 @@ pub(crate) trait PayNotifyTrait: WechatPayTrait {
         let v3_key = self.v3_key();
         let ciphertext = general_purpose::STANDARD.decode(ciphertext.as_ref())?;
         let aes_key = v3_key.as_str().as_bytes();
-        let key = Key::<Aes256Gcm>::from_slice(aes_key);
-        let mut cipher = Aes256Gcm::new(&key);
-        let nonce = Nonce::from_slice(&ciphertext[0..12]);
+        let mut cipher = Aes256Gcm::new(aes_key.into());
         let payload = Payload {
-            msg: &ciphertext[12..],
+            msg: &ciphertext.as_slice(),
             aad: &associated_data.as_ref().as_bytes(),
         };
-        let plaintext = cipher.decrypt(nonce, payload)
+        let plaintext = cipher.decrypt(nonce.as_ref().as_bytes().into(), payload)
             .map_err(|e| PayError::DecryptError(e.to_string()))?;
         let data: PayDecodeData = serde_json::from_slice(&plaintext)?;
         Ok(data)
@@ -91,6 +89,8 @@ pub(crate) trait WechatPayTrait {
         }
     }
 }
+
+impl PayNotifyTrait for WechatPay {}
 
 impl WechatPayTrait for WechatPay {
     fn appid(&self) -> String {
@@ -204,9 +204,14 @@ impl WechatPay {
 
 #[cfg(test)]
 mod tests {
+    use aes_gcm::aead::generic_array::GenericArray;
+    use aes_gcm::{Aes256Gcm, KeyInit};
+    use aes_gcm::aead::{Aead, Payload};
+    use dotenvy::dotenv;
     use tracing::debug;
     use uuid::Uuid;
-    use crate::pay::{WechatPay, WechatPayTrait};
+    use crate::model::PayDecodeData;
+    use crate::pay::{PayNotifyTrait, WechatPay, WechatPayTrait};
 
     #[inline]
     fn init_log() {
@@ -240,5 +245,17 @@ mod tests {
         let uuid = Uuid::new_v4().to_string().replace("-", "");
         debug!("uuid: {}", uuid);
         debug!("timestamp: {}", timestamp);
+    }
+
+    #[test]
+    fn test_decrypt() {
+        init_log();
+        dotenv().ok();
+        let associated_data = "transaction";
+        let nonce = "gZiqzlfayUu2";
+        let ciphertext = "pCidqdiS5IIj5f9Pw9j69zuzu8l8IxcPCkfsTBKzna4gqZztNAqTMUY/Ai0rtj8qhaX0naYZF3a2lRid/ofK/83MNv+Neb5+w/0+UOO9nLNJvIFy3oFeMf2PTbp6tgDE35T5AoP9iKQ+1VkXTiUdRxzFoRx6/LfBzHmeuVEDHKScRqjrf6NdxuDDD0ciCQaiHmb18Y0BRZdfNxWTAC83Rar5yTX2NNZPBtGdFDG3yAK2I3Vp7ZKLeMa92ecExNGwHrdJ+HxWw66IIdwVqJLlNmTG0c5zUpSc8yovnaJi1Wv/TC7Tm5NzcwdHsdRE110tIWFbvNmIzIIb+3P33JFWmaXXb1VVDC43DqtlplttYwL6H3kU0ABgHMMbccTwYmP4cSY8BCAL01754nqipxWogEC/la9iQiw85+rLRo/Ny9k3mp8n35D6bDNtS1LiaslbLM92ZbfKeglTg54F/R1l5xWolAVpx8iTz8Oc+XJClXdWr8j5poyh8zK2/RrXPRfr+8s2/oGeGvdaqJbN/LviYcCMDbXU9pKDScWlSi4akxfJu0EatPDvFEbn5DYRQnn5v6wCeesYkEL+wiFCAIs=";
+        let wechat_pay = WechatPay::from_env();
+        let data = wechat_pay.decrypt(ciphertext, nonce, associated_data).unwrap();
+        debug!("data: {:#?}", data);
     }
 }
