@@ -69,3 +69,26 @@ pub struct H5Response {
 }
 
 impl ResponseTrait for H5Response {}
+
+#[derive(Debug, Deserialize)]
+pub struct EncryptCertificate {
+    pub algorithm: String,
+    pub nonce: String,
+    pub associated_data: String,
+    pub ciphertext: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Certificate {
+    pub serial_no: String,
+    pub effective_time: String,
+    pub expire_time: String,
+    pub encrypt_certificate: EncryptCertificate,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CertificateResponse {
+    pub data: Option<Vec<Certificate>>,
+}
+
+impl ResponseTrait for CertificateResponse {}

@@ -5,7 +5,7 @@ use crate::error::PayError;
 use crate::model::{AppParams, H5Params, JsapiParams, MicroParams, NativeParams, ParamsTrait};
 use crate::pay::{WechatPay, WechatPayTrait};
 use crate::request::HttpMethod;
-use crate::response::{AppResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse, ResponseTrait, SignData};
+use crate::response::{AppResponse, CertificateResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse, ResponseTrait, SignData};
 
 impl WechatPay {
     pub(crate) fn pay<P: ParamsTrait, R: ResponseTrait>(&self, method: HttpMethod, url: &str, json: P) -> Result<R, PayError> {
@@ -17,7 +17,7 @@ impl WechatPay {
         map.insert("notify_url".to_owned(), self.notify_url().into());
         let body = serde_json::to_string(&map)?;
         let headers = self.build_header(
-            method,
+            method.clone(),
             url,
             body.as_str(),
         )?;
@@ -25,7 +25,35 @@ impl WechatPay {
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {}", url);
         debug!("body: {}",body);
-        client.post(url)
+        let builder = match method {
+            HttpMethod::GET => client.get(url),
+            HttpMethod::POST => client.post(url),
+            HttpMethod::PUT => client.put(url),
+            HttpMethod::DELETE => client.delete(url),
+            HttpMethod::PATCH => client.patch(url),
+        };
+
+        builder
+            .headers(headers)
+            .body(body)
+            .send()?
+            .json::<R>()
+            .map(Ok)?
+    }
+
+    pub(crate) fn get_pay<R: ResponseTrait>(&self, url: &str) -> Result<R, PayError> {
+        let body = "";
+        let headers = self.build_header(
+            HttpMethod::GET,
+            url,
+            body,
+        )?;
+        let client = reqwest::blocking::Client::new();
+        let url = format!("{}{}", self.base_url(), url);
+        debug!("url: {}", url);
+        debug!("body: {}",body);
+        client
+            .get(url)
             .headers(headers)
             .body(body)
             .send()?
@@ -91,6 +119,11 @@ impl WechatPay {
                 result
             })
     }
+    pub fn certificates(&self) -> Result<CertificateResponse, PayError> {
+        let url = "/v3/certificates";
+        self.get_pay(url)
+    }
+
 }
 
 #[cfg(test)]
@@ -175,5 +208,14 @@ mod tests {
             H5SceneInfo::new("183.6.105.141", "ipa软件下载", "https://ipadump.com"),
         )).expect("h5_pay error");
         debug!("body: {:?}", body);
+    }
+
+    #[test]
+    pub fn test_certificates() {
+        init_log();
+        dotenv().ok();
+        let wechat_pay = WechatPay::from_env();
+        let response = wechat_pay.certificates().expect("certificates error");
+        debug!("response: {:#?}", response);
     }
 }

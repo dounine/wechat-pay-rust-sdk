@@ -5,7 +5,6 @@ use strum_macros::Display;
 pub trait ParamsTrait {
     fn to_json(&self) -> String;
 }
-
 #[derive(Serialize, Display, Debug, Clone)]
 pub enum Currency {
     CNY,
@@ -457,7 +456,7 @@ unsafe impl Send for JsapiParams {}
 unsafe impl Sync for JsapiParams {}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PayNotifySource {
+pub struct WechatPayNotifySource {
     pub algorithm: String,
     pub ciphertext: String,
     pub associated_data: Option<String>,
@@ -466,17 +465,17 @@ pub struct PayNotifySource {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PayNotify {
+pub struct WechatPayNotify {
     pub id: String,
     pub create_time: String,
     pub event_type: String,
     pub resource_type: String,
-    pub resource: PayNotifySource,
+    pub resource: WechatPayNotifySource,
     pub summary: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PayDecodeData {
+pub struct WechatPayDecodeData {
     pub mchid: String,
     pub appid: String,
     pub out_trade_no: String,

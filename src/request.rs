@@ -8,9 +8,6 @@ pub enum HttpMethod {
     PUT,
     DELETE,
     PATCH,
-    HEAD,
-    OPTIONS,
-    TRACE,
 }
 
 unsafe impl Send for HttpMethod {}

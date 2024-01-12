@@ -9,7 +9,7 @@ use crate::model::AppParams;
 use crate::model::H5Params;
 use crate::pay::{WechatPay, WechatPayTrait};
 use crate::request::HttpMethod;
-use crate::response::NativeResponse;
+use crate::response::{CertificateResponse, NativeResponse};
 use crate::response::ResponseTrait;
 use crate::response::JsapiResponse;
 use crate::response::MicroResponse;
@@ -26,7 +26,7 @@ impl WechatPay {
         map.insert("notify_url".to_owned(), self.notify_url().into());
         let body = serde_json::to_string(&map)?;
         let headers = self.build_header(
-            method,
+            method.clone(),
             url,
             body.as_str(),
         )?;
@@ -34,7 +34,37 @@ impl WechatPay {
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {}", url);
         debug!("body: {}",body);
-        client.post(url)
+        let builder = match method {
+            HttpMethod::GET => client.get(url),
+            HttpMethod::POST => client.post(url),
+            HttpMethod::PUT => client.put(url),
+            HttpMethod::DELETE => client.delete(url),
+            HttpMethod::PATCH => client.patch(url),
+        };
+
+        builder
+            .headers(headers)
+            .body(body)
+            .send()
+            .await?
+            .json::<R>()
+            .await
+            .map(Ok)?
+    }
+
+    pub(crate) async fn get_pay<R: ResponseTrait>(&self, url: &str) -> Result<R, PayError> {
+        let body = "";
+        let headers = self.build_header(
+            HttpMethod::GET,
+            url,
+            body,
+        )?;
+        let client = reqwest::Client::new();
+        let url = format!("{}{}", self.base_url(), url);
+        debug!("url: {}", url);
+        debug!("body: {}",body);
+        client
+            .get(url)
             .headers(headers)
             .body(body)
             .send()
@@ -87,6 +117,11 @@ impl WechatPay {
     pub async fn native_pay(&self, params: NativeParams) -> Result<NativeResponse, PayError> {
         let url = "/v3/pay/transactions/native";
         self.pay(HttpMethod::POST, url, params).await
+    }
+
+    pub async fn certificates(&self) -> Result<CertificateResponse, PayError> {
+        let url = "/v3/certificates";
+        self.get_pay(url).await
     }
 }
 
