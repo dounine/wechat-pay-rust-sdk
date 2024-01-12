@@ -11,6 +11,7 @@
 3. [app支付](#app支付)
 4. [h5支付](#h5支付)
 5. [小程序支付](#小程序支付)
+6. [支付回调解密](#支付回调解密)
 
 # 使用指南
 引入依赖
@@ -149,3 +150,66 @@ MicroResponse {
     prepay_id: Some("wx201410272009395522657a690389285100") 
 }
  ```
+
+## 支付回调解密
+```rust
+use wechat_pay_rust_sdk::pay::{PayNotifyTrait, WechatPay};
+let associated_data = "transaction";
+let nonce = "gZiqzlfayUu2";
+let ciphertext = "pCidqdiS5IIj5f9Pw9j69zuzu8l8IxcPCkfsTBKzna4gqZztNAqTMUY/Ai0rtj8qhaX0naYZF3a2lRid/ofK/83MNv+Neb5+w/0+UOO9nLNJvIFy3oFeMf2PTbp6tgDE35T5AoP9iKQ+1VkXTiUdRxzFoRx6/LfBzHmeuVEDHKScRqjrf6NdxuDDD0ciCQaiHmb18Y0BRZdfNxWTAC83Rar5yTX2NNZPBtGdFDG3yAK2I3Vp7ZKLeMa92ecExNGwHrdJ+HxWw66IIdwVqJLlNmTG0c5zUpSc8yovnaJi1Wv/TC7Tm5NzcwdHsdRE110tIWFbvNmIzIIb+3P33JFWmaXXb1VVDC43DqtlplttYwL6H3kU0ABgHMMbccTwYmP4cSY8BCAL01754nqipxWogEC/la9iQiw85+rLRo/Ny9k3mp8n35D6bDNtS1LiaslbLM92ZbfKeglTg54F/R1l5xWolAVpx8iTz8Oc+XJClXdWr8j5poyh8zK2/RrXPRfr+8s2/oGeGvdaqJbN/LviYcCMDbXU9pKDScWlSi4akxfJu0EatPDvFEbn5DYRQnn5v6wCeesYkEL+wiFCAIs=";
+let wechat_pay = WechatPay::from_env();
+let data = wechat_pay.decrypt_paydata(
+    ciphertext,
+    nonce,
+    associated_data
+).unwrap();
+println!("data: {:#?}", data);
+```
+解密结果
+```
+WechatPayDecodeData {
+    mchid: "163971811111",
+    appid: "wx15f4803f25xxxxx",
+    out_trade_no: "8e289eebd1f44604b0b27e05f11bcf10",
+    transaction_id: "4200001926202401125681342683",
+    trade_type: "MWEB",
+    trade_state: "SUCCESS",
+    trade_state_desc: "支付成功",
+    bank_type: "OTHERS",
+    attach: "",
+    success_time: "2024-01-12T10:36:13+08:00",
+    payer: PayerInfo {
+        openid: "oAZUY6DittOj59wCzPn6vNgpK2eY",
+    },
+    amount: AmountInfo {
+        total: 1,
+    },
+}
+```
+## actix-web demo
+支付回调json格式为
+```json
+{"id":"376151be-0eac-5047-b08a-46b52e15d2e2","create_time":"2024-01-12T12:17:33+08:00","resource_type":"encrypt-resource","event_type":"TRANSACTION.SUCCESS","summary":"支付成功","resource":{"original_type":"transaction","algorithm":"AEAD_AES_256_GCM","ciphertext":"u+MVmYPLQO4fjRsGWChm3sc/AXFVsytCI362RzYJyG25RbP6RSxYtkC2TIUA2ECfdhaJ0pIYuv4TwHwB1JE+0dn/MVQIjsBgaL9jx6IxmFIbkvNg0o623PF250ZhC9snTzxKJJtPtKFn3E8bR/pmqO4zbwUjQyQI5B4LqmzFcKpiKqGZSyG0BdvEWV2sDlR8oHD3s5RH/YN6c0aI7pEtVa1n7CR4qqQo9/NLAjTwloXWxB0BB+OnmlXQ9fu1UdJBS8L53W9zpREbEpH3BeCjrML/5qBs2nwcgvRV0OM30LkEdX8/lX7PiR6jzT2SexbinpSzx1QyXy9ZZfLRjFWVfQDTcDOrkMIaem4rhRgkAe5UDx6xdtqbgPSi5Ry/KHPm1+ptAl1GmEe9LIz8fRLleew3U0THXTSjnu5dJaXqk0qEizvK1pQBZ97QuzWuC2sVh4pd/OyqSNn93mlslkJIgT/UjQRcTIUE/CphdI7BGJkKYbEz4pSoqD/lxUiZNlMWbDeP4gEu/B7+Uk8n9vCOzR35VroLpweC0aDnCa3ru8DfMOcLQTvq04M4GJha9aodXec399ma3UcLEuw=","associated_data":"transaction","nonce":"pEw6yyO8XiSj"}}
+```
+自行使用web框架获取post json数据
+```rust
+#[post("/pay/notify")]
+async fn pay_notify(data: Json<WechatPayNotify>, req: HttpRequest) -> impl Responder {
+    let data = data.into_inner();
+    let nonce = data.resource.nonce;
+    let ciphertext = data.resource.ciphertext;
+    let associated_data = data.resource.associated_data.unwrap_or_default();
+    dotenv().ok();
+    let wechat_pay = WechatPay::from_env();
+    let result: WechatPayDecodeData = wechat_pay.decrypt_paydata(
+        ciphertext, //加密数据
+        nonce, //随机串
+        associated_data, //关联数据
+    ).unwrap();
+    debug!("result: {:#?}", result);
+    HttpResponse::Ok().json(serde_json::json!({
+        "code": "SUCCESS",
+        "message": "成功"
+    }))
+}
+```
