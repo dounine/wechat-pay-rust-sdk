@@ -6,7 +6,26 @@ use wechat_pay_rust_sdk::model::{WechatPayDecodeData, WechatPayNotify};
 use wechat_pay_rust_sdk::pay::{PayNotifyTrait, WechatPay};
 
 #[post("/pay/notify")]
-async fn pay_notify(data: Json<WechatPayNotify>, req: HttpRequest) -> impl Responder {
+async fn pay_notify(bytes:Bytes, req: HttpRequest) -> impl Responder {
+    let headers = req.headers();
+    headers.iter().for_each(|(k, v)| {
+        debug!("{}: {:?}", k, v);
+    });
+    let str = String::from_utf8(bytes.to_vec()).unwrap();
+    debug!("body: {}", str);
+    HttpResponse::Ok().json(serde_json::json!({
+        "code": "SUCCESS",
+        "message": "成功"
+    }))
+}
+
+#[post("/pay/notify2")]
+async fn pay_notify2(bytes: Bytes, data: Json<WechatPayNotify>, req: HttpRequest) -> impl Responder {
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    debug!("body: {}", body);
+    req.headers().iter().for_each(|(k, v)| {
+        debug!("{}: {:?}", k, v);
+    });
     let data = data.into_inner();
     debug!("data: {:#?}", data);
     let nonce = data.resource.nonce;
@@ -35,6 +54,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .service(pay_notify)
+            .service(pay_notify2)
     })
         .bind(("0.0.0.0", 8080))?
         .workers(1)

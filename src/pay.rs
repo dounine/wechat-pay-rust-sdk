@@ -1,6 +1,5 @@
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, USER_AGENT};
-use rsa::pkcs8::DecodePrivateKey;
-use sha2::Digest;
+use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
 use tracing::debug;
 use crate::request::HttpMethod;
 use crate::{sign, util};
@@ -9,6 +8,9 @@ use crate::error::PayError;
 use crate::response::SignData;
 use aes_gcm::{aead::{AeadCore, AeadInPlace, KeyInit, OsRng}, Aes256Gcm, Key, Nonce};
 use aes_gcm::aead::{AeadMut, Payload};
+use rsa::RsaPublicKey;
+use rsa::sha2::Sha256;
+use rsa::signature::DigestVerifier;
 use crate::model::WechatPayDecodeData;
 
 #[derive(Debug)]
@@ -27,6 +29,19 @@ unsafe impl Send for WechatPay {}
 unsafe impl Sync for WechatPay {}
 
 pub trait PayNotifyTrait: WechatPayTrait {
+    fn verify_sign(&self, pub_key: String, signatrue: &[u8], message: &[u8]) -> Result<(), PayError> {
+        use rsa::{
+            pkcs1v15::{Signature, VerifyingKey},
+            signature::Verifier,
+        };
+        let pub_key = RsaPublicKey::from_public_key_pem(pub_key.as_str())
+            .map_err(|e| PayError::VerifyError("public key parser error".to_string()))?;
+        let signature = Signature::try_from(signatrue).expect("Signature error");
+        let verifying_key: VerifyingKey<Sha256> = VerifyingKey::from(pub_key.clone());
+        verifying_key
+            .verify(message, &signature)
+            .map_err(|e| PayError::VerifyError(e.to_string()))
+    }
     fn decrypt_paydata<S>(&self, ciphertext: S, nonce: S, associated_data: S) -> Result<WechatPayDecodeData, PayError>
         where S: AsRef<str>
     {
@@ -41,7 +56,29 @@ pub trait PayNotifyTrait: WechatPayTrait {
             return Err(PayError::DecryptError("nonce length must be 12".to_string()));
         }
         let v3_key = self.v3_key();
-        let ciphertext = util::base64_decode(ciphertext)?;
+        let ciphertext = util::base64_decode(ciphertext.as_ref())?;
+        let aes_key = v3_key.as_str().as_bytes();
+        let mut cipher = Aes256Gcm::new(aes_key.into());
+        let payload = Payload {
+            msg: &ciphertext.as_slice(),
+            aad: &associated_data.as_ref().as_bytes(),
+        };
+        let plaintext = cipher.decrypt(nonce.as_ref().as_bytes().into(), payload)
+            .map_err(|e| PayError::DecryptError(e.to_string()))?;
+        Ok(plaintext)
+    }
+
+    fn decrypt_bytes2<S>(&self, ciphertext: S, nonce: S, associated_data: S) -> Result<Vec<u8>, PayError>
+        where S: AsRef<str>
+    {
+        if nonce.as_ref().len() != 12 {
+            return Err(PayError::DecryptError("nonce length must be 12".to_string()));
+        }
+        let cipherdata_len = ciphertext.as_ref().len() - 16;
+        let ciphertext_u8 = ciphertext.as_ref().as_bytes();
+        let cipherdata_data = &ciphertext_u8[..cipherdata_len];
+        let v3_key = self.v3_key();
+        let ciphertext = util::base64_decode(ciphertext.as_ref())?;
         let aes_key = v3_key.as_str().as_bytes();
         let mut cipher = Aes256Gcm::new(aes_key.into());
         let payload = Payload {
@@ -280,11 +317,27 @@ mod tests {
         init_log();
         dotenv().ok();
         let associated_data = "certificate";
-        let nonce = "0bfeb0fe3190";
-        let ciphertext = "fglMvLjFeth/ioMn5wjSBzhk3uCyFoeFt1tIVYwuaIAevbFr3I4UiaRM/IIRhRTl5SlMVBvNo8iDObaD6YjCO/9vRyl3DAkqTEzpkpg+2wqwEauVTxRhN/pB0fXukJ/qCeLADG3lYPLIAWqdOzcndjcHHtrj779QLqFb1SuDqjrGlVwMSyR4Lpoz/kYhewivONULG9zE5zlWT1zEXw2rxMnd1KzZWku1KYCt+D6mlPzSQ3doY5KYRCMtYLv6HSjztZD4y2vN4XZZumg8QOUrx5RLzCT1HuLmBssgP9Rgs+rrlQ7b87fHVkpm6TAwMkskAurwXBLWNh/DGYE1/Z0KxE2Z/Ryx4+v8qVOllRGqp3Bw26eu9Tnisf8DAe+Nh+Uh0J3aomEySjLU7bwNdNO7FIrqHM2b8cFdyL0+vao4xOrBz6rnkQaGgHsffcfU9fjg8fty99MGpGix5qrJqzQE4k72Sp743YC1O7yRfXTGGujrB6aM+JyuxDnmI7dSY+bmdfgDg9u7y5fHlueLXBb3TwDnWv+TKQY78g3sRf1MxDj6KPWKFaqtPrwtFlkt4Iwtn5Wh0D2tmI2kIPiVJxeu2APLNVUB/5UxmqrdxRzEbcwz8Q8mk+khZnQvJG5uDznvVMH5BjZSb7c5hfmdjFJawKQcvO8rEEUyhCa4KAhTcwBc8VdvNs3nHTAClZFNLi7dbZ9xVKKpGUiyRSDn/Ds9ogjQrJCQLx+fV1PZJxtQJqgfM8UziSdVOR7eJzpFT3bgDwwbeQSoVgcZjqO5amceqXejpU1lT2HqszzeZ/qVbB4IBdiQLlMd4T4J/9Ioa4+69fuY3g4V94ZhzIWqrMU81O/78e5EvRUIV6BfZWPeR2LdTNGYIyrNulaUaalpOkWp1MCgwzbyLGqycRRdj2AykIFV6m0Yr/vY5p8J5BIuDQCKWAZFMnVbEjPeu4TFeDn1eaebH0ieEyas9s3eIE2goOFhSPlhzZLSu/oYe/s5w8DkDRjjT/swDJsPjXR9eKL8MYocsdt5ikw2alEmT+RXoOAXapvb1X8jbnB7aV6wvB0ws1EPhy6/a1vMDMSOcIhx/sd+SxsHo8cYZlwidChZtGIvCUfgA6G9QSxkOd8MLxed6LRuBM7+NZE6xel8euJNpzY5Xe6GmKk9ncDlc5kzgTrbRZFoMkazbNMPkF2z4mTK7+Y+A2nkdPc9cLWvJQBrEU0/12zaXr7inhczycV6aBc+DZM6CSjQmF4HLY9X84UwhS7BtghLlITRujH9SSg80kGU/IiVxjEmX8zNx/j4ESjxMNf3X/tbw6gwSHcudWJ2hV/KWkGSEwByetb3p8r3flzZzl6olAYdUNHCJ8ZAZF0jiChEYNKL6oLiysulPn8SBZwu+6/xb8bOGQ4vA+EGC7qE853iKhWMC6Ptxtq/1gIWHte3xRrIfT0Pl7z4lQ1b+3AHWCglz1UPlwoigO/CxKIVdqwDi7mBz0qaWD9usT/xzqilPsH/SnhvGaxJgsybVrFQFRElrMtt6aT7TD+1vfoct+qLmr30yNU5yO7yv25EoTcDQqgHi9KPoeKkLlRykE74AsVtKh5t+tpRdbbR6PSWQDTkg7iGATCjs0JUIZwtjP60obdquyJP2XM4Djwx1FRdmHriUQ5HfNm1f09jQi+SAuSpeJ6WtIBtswanZqyVfqVGvuZwX4ON9vbmlXnimePIp6V98A9f4gR1UttJ0Jl3FZ6Dsk7pa+i9gSGdT1lmJW3oQ0GOtrALjIU1mNgZEusk5nQpArnq0Sr6lCHJfoITc6Dil3zP0X9ANT8ypXFydDgmqmw5ULdvuyqtsiUp49ZtxGNWQkH3+jzBYl+jSD8c1vsslKW7G0HCwUdegURWLqV3POLY3WgPt/MT1U94tEgN7LmnwnhUuuGh4nuiZw062gh/MmmK4MRMO+jnrJLWBaobLqt3AGWalR7FfZz8P5cyXP0U8SEoaARKbdavLRfa";
+        let nonce = "bf003ed52d71";
+        let ciphertext = "HE9tL+x8Mag2627GPRXBmaQxZPVhAm3f2UoxgHvVW+m6eN0vq6ggFf4UsaQ8ifeGKwjhj9M6ObREHNogrT5JlEDV4Mfg8pAcLNvKUnbQZeBFKtp8kXPy0KFGhfSWcMZ4+HyfAUkgqLpdRUuNpG3gSJptnfrbJktdtYifkDOcei+1ncq8x+aWCXkFw8l9xBSN8MVSf66TiKyuPD/QCKYbD92HHfmDHk2b8J+BKyISDlQTlKjpb9M01EnuPsIXi4Rww1YzZP8XDruRTFxxDxGmk74tu1cjGXzTIcNmFu85eHbLWENvoLttl/4cKLJ8w49PuCyrREACz1YeAOscEHsqYHaQ0VE2N/8J0wCBuQa+AVD6ra59lmCxRJOVfgQNTShxonA6uCfaPGtyg+5qlwYTESnSdIy2ODlXaOfzMT5N7/actJsEf2C7RJXTPWn79M5slVfE3gOh9aR3mJaEMFM9KZywqv4OT0OI9mpLqRLAV/QCkJ0q2SKCcZyIuLa+VAPVS5Rh2feQkP40iizvVPN68YMOAmVgMBYLaxehGnetT2UylTlqsov35hsbfKOEN5ArSr7y4xoTjW5BV4S0s2IDzHTHWQpMlTxJ59/sgMoq8+m8vezJ0W4AZubwG/iSQ+/tzv1CXAVUgMO8ZqEALpGiROVq+9hdD5a0UB6cGuOTw9OiQHLSn1M4zV2jWDLQSZ+Q8KFhTpMibnvdLFmC09k26K75VcACsNPSa9U+nvP9sp3H7a39Y9BXjIz8/Yd707Y8h76MpEWLsVTn7FvRWwaCi4vxZN/LMRh9KTLNffQcb5amoDYKVSr5BTshdM7EosNwQmGenNnAFlNE/mabXSIz+FC3gMlDbxVvaoB5vOLB/YHrqfoLMEtYGm2HGqjppLmkbNM/R/6NIDFe+jaXZPWh9Bt8F4blihJnbEsZlC/w0/2OylTUsjRipG443XhOLEZJgD54KOnQdpqDah+AW2tPq5V9528ePK5xJzZ33MB3kjgnmljaF5cVbgUcCp5e8N+zvFVoyltsYMNNrtOan0Zfpsj9hNPnUVKLEnsjGXyfpBazRKoOOrPK5MImLUt/JblT+PFZ1oSrQE1IRRfF88yaUYwY2qk3pTrqBY676hOIUesWwuN4CSm28lLu/VarJaY0iLKuoGF0eikGFnAae1BIuFxvDUc3C+vC4GXUFn9jr3PZQcGJuI3MbEk8xGFWcU8UBU2wWhRu5lIgFSX5krbe+FWmRSjl6Rc3s7HZi5Xa8RiRuN1bOcnhVYkNYXy1fg7lXoopWJJPgtMO/+DDTNGQe8G0UgQxy+OK0urlhtzGQjVhF838i0heG4JV+OWUKj/Qvoj/dxVVfIbfroupkg8GvMmn0Cq+nAuo0D0fvhQshDmRsL/a006piEiLthruMn/gymk8cccMVvzn+DxYfYH/WX2UKZ235hPynVLUo8FBBedVTQK3JuJHCT4Kz0lL28KRLpE+lW3/bzG9s0Bly7/h1BF5Xunv4TWYhMFseWGMRIiKR7HxMSXbD4Q1PQJrZt/DtP3JbPURfc6fuYPIb7iuka0kDkPGSCV2uCpzjVHZXYQWrDhFv7LWi4SUw+2mCZLsLR6kesexb5bBOMVRxnA/5WmYVp73WzXar28CW3l0WCccGL/EdVdhrx09RoW5GSy9zcjbyGhwZQuzZECbf/wCpd26YlMTzFP0bqfL/QJ4g32TX8XweyhTPRI7FX1Bg8x85GJYG/bvecR40lDj4A0WKGnVbic3e7LQpDi/BP9adDBxx3Nl0iCN9BUlMx6ypNmrQWHwQXgmPwapyByK0FHjmf0u7hExZ7+xMa9/DPo2YPJdAY6zuHlNUIXLEVa9/VrclsYbyGkeohFGsMgY5MIA0ZF5FFxEOQ31gtNgQiGIVywSGJS8L+qB3tDc07O8hMxCY9wKPP2ua0MkkKQ7O6cr3W1DxNsd9NCbENDW4zNHzT+4pafS1TFaEy0nHI/wIQEyJlXD";
         let wechat_pay = WechatPay::from_env();
         let data = wechat_pay.decrypt_bytes(ciphertext, nonce, associated_data).unwrap();
+        // let byte = util::base64_decode(data).unwrap();
         debug!("data: {}", String::from_utf8(data).unwrap());
     }
 
+    #[test]
+    fn test_verify_sign() {
+        init_log();
+        dotenv().ok();
+        let wechat_pay = WechatPay::from_env();
+        let pub_key = std::fs::read_to_string("pub.pem").unwrap();
+        let wechatpay_signatrue = std::fs::read_to_string("wechatpay-signature.txt").unwrap();
+        let body = std::fs::read_to_string("body.txt").unwrap();
+        let wechatpay_timestamp = "1705052596";
+        let wechatpay_nonce = "9M8KjU1gPrCm0Segnx9enDytLArB2Ikk";
+        let message = format!("{}\n{}\n{}\n", wechatpay_timestamp, wechatpay_nonce, body);
+        println!("{}", message);
+        let wechatpay_signatrue2 = util::base64_decode(wechatpay_signatrue.as_str()).unwrap();
+        let result = wechat_pay.verify_sign(pub_key, wechatpay_signatrue2.as_slice(), message.as_bytes()).unwrap();
+    }
 }

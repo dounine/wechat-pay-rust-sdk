@@ -13,7 +13,7 @@ pub fn base64_encode<S>(content: S) -> String
 }
 
 pub fn base64_decode<S>(content: S) -> Result<Vec<u8>, DecodeError>
-    where S: AsRef<str>
+    where S: AsRef<[u8]>
 {
     general_purpose::STANDARD.decode(content.as_ref())
 }

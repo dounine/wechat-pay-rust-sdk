@@ -20,7 +20,6 @@ base64 = "0.21.6"
 chrono = "0.4.31"
 rsa = { version = "0.9.6", features = ["sha2"] }
 aes-gcm = "0.10.3"
-sha2 = "0.11.0-pre.0"
 md5 = "0.7.0"
 reqwest = { version = "0.11.23", features = ["json"] }
 thiserror = "1.0.56"
@@ -33,7 +32,7 @@ strum = "0.25.0"
 strum_macros = "0.25.0"
 
 [features]
-default = ["async"]
+default = ["blocking"]
 blocking = ["reqwest/blocking"]
 async = []
 

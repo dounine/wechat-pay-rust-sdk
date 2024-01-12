@@ -10,4 +10,6 @@ pub enum PayError {
     DecryptError(String),
     #[error("Base64 decode error: {0}")]
     DecodeError(#[from] base64::DecodeError),
+    #[error("verify error: {0}")]
+    VerifyError(String),
 }
