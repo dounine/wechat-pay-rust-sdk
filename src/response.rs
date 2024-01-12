@@ -70,7 +70,7 @@ pub struct H5Response {
 
 impl ResponseTrait for H5Response {}
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct EncryptCertificate {
     pub algorithm: String,
     pub nonce: String,
@@ -78,7 +78,7 @@ pub struct EncryptCertificate {
     pub ciphertext: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Certificate {
     pub serial_no: String,
     pub effective_time: String,

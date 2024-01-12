@@ -1,3 +1,4 @@
+use reqwest::header::{HeaderMap, REFERER};
 use serde_json::{Map, Value};
 use tracing::debug;
 use crate::error::PayError;
@@ -122,6 +123,25 @@ impl WechatPay {
     pub async fn certificates(&self) -> Result<CertificateResponse, PayError> {
         let url = "/v3/certificates";
         self.get_pay(url).await
+    }
+    pub async fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<String, PayError>
+        where S: AsRef<str>
+    {
+        let client = reqwest::Client::new();
+        let mut headers = HeaderMap::new();
+        headers.insert(REFERER, referer.as_ref().parse().unwrap());
+        let text = client
+            .get(h5_url.as_ref())
+            .headers(headers)
+            .send()
+            .await?
+            .text()
+            .await?;
+        text
+            .split("\n")
+            .find(|line| line.contains("weixin://"))
+            .map(|line| Ok(line.to_string()))
+            .ok_or_else(|| PayError::WeixinNotFound)?
     }
 }
 

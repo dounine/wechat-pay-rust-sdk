@@ -1,3 +1,4 @@
+use reqwest::header::{HeaderMap, REFERER};
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use tracing::debug;
@@ -119,11 +120,27 @@ impl WechatPay {
                 result
             })
     }
+    pub fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<String, PayError>
+        where S: AsRef<str>
+    {
+        let client = reqwest::blocking::Client::new();
+        let mut headers = HeaderMap::new();
+        headers.insert(REFERER, referer.as_ref().parse().unwrap());
+        let body = client
+            .get(h5_url.as_ref())
+            .headers(headers)
+            .send()?;
+        let text = body.text()?;
+        text
+            .split("\n")
+            .find(|line| line.contains("weixin://"))
+            .map(|line| Ok(line.to_string()))
+            .ok_or_else(|| PayError::WeixinNotFound)?
+    }
     pub fn certificates(&self) -> Result<CertificateResponse, PayError> {
         let url = "/v3/certificates";
         self.get_pay(url)
     }
-
 }
 
 #[cfg(test)]
@@ -131,7 +148,8 @@ mod tests {
     use dotenvy::dotenv;
     use tracing::debug;
     use crate::model::{AppParams, H5Params, H5SceneInfo, JsapiParams, MicroParams, NativeParams, SceneInfo};
-    use crate::pay::WechatPay;
+    use crate::pay::{PayNotifyTrait, WechatPay};
+    use crate::response::Certificate;
     use crate::util;
 
     #[inline]
@@ -197,6 +215,13 @@ mod tests {
     }
 
     #[test]
+    pub fn test_str(){
+        let str = r#" deeplink : "weixin://wap/pay?prepayid%3Dwx122129234529163c948432e26bc0030000&package=4206921243&noncestr=1705066163&sign=788bc4a9f8f44c6f708aff38c4b48a85""#;
+        let strs = str.split(r#"""#)
+            .find(|line| line.contains("weixin://"));
+    }
+
+    #[test]
     pub fn test_h5_pay() {
         init_log();
         dotenv().ok();
@@ -207,7 +232,10 @@ mod tests {
             1.into(),
             H5SceneInfo::new("183.6.105.141", "ipa软件下载", "https://ipadump.com"),
         )).expect("h5_pay error");
-        debug!("body: {:?}", body);
+        let weixin_url = wechat_pay.get_weixin(body.h5_url.unwrap().as_str(), "https://ipadump.com").unwrap();
+        let weixin_url = weixin_url.split(r#"""#)
+            .find(|line| line.contains("weixin://")).unwrap();
+        debug!("weixin_url: {}", weixin_url);
     }
 
     #[test]
@@ -217,5 +245,19 @@ mod tests {
         let wechat_pay = WechatPay::from_env();
         let response = wechat_pay.certificates().expect("certificates error");
         debug!("response: {:#?}", response);
+    }
+
+    #[test]
+    pub fn test_decode_certificates() {
+        init_log();
+        dotenv().ok();
+        let wechat_pay = WechatPay::from_env();
+        let response = wechat_pay.certificates().expect("certificates error");
+        let data: Certificate = response.data.unwrap()[0].clone();
+        let ciphertext = data.encrypt_certificate.ciphertext;
+        let nonce = data.encrypt_certificate.nonce;
+        let associated_data = data.encrypt_certificate.associated_data;
+        let data = wechat_pay.decrypt_bytes(ciphertext, nonce, associated_data).unwrap();
+        debug!("data: {}", String::from_utf8(data).unwrap());
     }
 }

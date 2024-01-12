@@ -3,7 +3,7 @@ use base64::engine::general_purpose;
 use uuid::Uuid;
 
 pub fn random_trade_no() -> String {
-    Uuid::new_v4().to_string().replace("-", "")
+    Uuid::new_v4().simple().to_string()
 }
 
 pub fn base64_encode<S>(content: S) -> String

@@ -12,4 +12,6 @@ pub enum PayError {
     DecodeError(#[from] base64::DecodeError),
     #[error("verify error: {0}")]
     VerifyError(String),
+    #[error("weixin not found error")]
+    WeixinNotFound,
 }

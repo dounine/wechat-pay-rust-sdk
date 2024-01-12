@@ -1,22 +1,45 @@
 use actix_web::{App, get, HttpRequest, HttpResponse, HttpServer, post, Responder};
-use actix_web::web::{Bytes, Json, JsonConfig};
+use actix_web::web::{Bytes, get, Json, JsonConfig};
 use dotenvy::dotenv;
 use tracing::debug;
 use wechat_pay_rust_sdk::model::{WechatPayDecodeData, WechatPayNotify};
 use wechat_pay_rust_sdk::pay::{PayNotifyTrait, WechatPay};
 
 #[post("/pay/notify")]
-async fn pay_notify(bytes:Bytes, req: HttpRequest) -> impl Responder {
+async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
     let headers = req.headers();
     headers.iter().for_each(|(k, v)| {
         debug!("{}: {:?}", k, v);
     });
     let str = String::from_utf8(bytes.to_vec()).unwrap();
+    std::fs::write("body.txt", bytes).unwrap();
     debug!("body: {}", str);
     HttpResponse::Ok().json(serde_json::json!({
         "code": "SUCCESS",
         "message": "成功"
     }))
+}
+
+#[post("/pay/notify3")]
+async fn pay_notify3(bytes: Bytes, req: HttpRequest) -> impl Responder {
+    let headers = req.headers();
+    let wechatpay_signatrue = headers.get("wechatpay-signature").unwrap().to_str().unwrap();
+    let wechatpay_timestamp = headers.get("wechatpay-timestamp").unwrap().to_str().unwrap();
+    let wechatpay_nonce = headers.get("wechatpay-nonce").unwrap().to_str().unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let wechat_pay = WechatPay::from_env();
+    let pub_key = std::fs::read_to_string("pubkey.pem").unwrap();
+    let message = format!("{}\n{}\n{}\n", wechatpay_timestamp, wechatpay_nonce, body);
+    wechat_pay.verify_signatrue(pub_key.as_str(), wechatpay_signatrue.as_bytes(), message.as_bytes()).expect("签名验证失败，非法数据");
+    HttpResponse::Ok().json(serde_json::json!({
+        "code": "SUCCESS",
+        "message": "成功"
+    }))
+}
+
+#[get("/")]
+async fn home() -> impl Responder {
+    HttpResponse::Ok().body("hello rust")
 }
 
 #[post("/pay/notify2")]
@@ -55,6 +78,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .service(pay_notify)
             .service(pay_notify2)
+            .service(home)
     })
         .bind(("0.0.0.0", 8080))?
         .workers(1)
