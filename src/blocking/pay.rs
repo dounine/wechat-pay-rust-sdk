@@ -260,6 +260,6 @@ mod tests {
         let nonce = data.encrypt_certificate.nonce;
         let associated_data = data.encrypt_certificate.associated_data;
         let data = wechat_pay.decrypt_bytes(ciphertext, nonce, associated_data).unwrap();
-        debug!("data: {}", String::from_utf8(data).unwrap());
+        debug!("data: {}", String::from_utf8_lossy(data.as_ref()));
     }
 }

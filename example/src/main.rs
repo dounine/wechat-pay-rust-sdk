@@ -29,8 +29,14 @@ async fn pay_notify3(bytes: Bytes, req: HttpRequest) -> impl Responder {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     let wechat_pay = WechatPay::from_env();
     let pub_key = std::fs::read_to_string("pubkey.pem").unwrap();
-    let message = format!("{}\n{}\n{}\n", wechatpay_timestamp, wechatpay_nonce, body);
-    wechat_pay.verify_signatrue(pub_key.as_str(), wechatpay_signatrue.as_bytes(), message.as_bytes()).expect("签名验证失败，非法数据");
+    let body = format!("{}\n{}\n{}\n", wechatpay_timestamp, wechatpay_nonce, body);
+    wechat_pay.verify_signatrue(
+        pub_key.as_str(),
+        wechatpay_timestamp,
+        wechatpay_nonce,
+        wechatpay_signatrue,
+        body.as_str(),
+    ).expect("签名验证失败，非法数据");
     HttpResponse::Ok().json(serde_json::json!({
         "code": "SUCCESS",
         "message": "成功"
