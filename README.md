@@ -18,13 +18,13 @@
 # 使用指南
 引入依赖
 ```toml
-wechat-pay-rust-sdk = {version = "0.2.5", features = ["blocking"]}
-#异步 wechat-pay-rust-sdk = {version = "0.2.5", features = ["async"]}
+wechat-pay-rust-sdk = {version = "0.2.8", features = ["blocking"]}
+#异步 wechat-pay-rust-sdk = {version = "0.2.8", features = ["async"]}
 ```
 
 ## native支付
 ```rust
-use wechat_pay_rust_sdk::model::NativeConfig;
+use wechat_pay_rust_sdk::model::NativeParams;
 use wechat_pay_rust_sdk::pay::WechatPay;
 
 let private_key_path = "./apiclient_key.pem";
@@ -37,7 +37,7 @@ let wechat_pay = WechatPay::new(
     "v3_key",
     "notifi_url",
 );
-let body = wechat_pay.native_pay(NativeConfig::new(
+let body = wechat_pay.native_pay(NativeParams::new(
     "测试支付1分",
     "124324343",
     1.into(),
