@@ -1,6 +1,6 @@
 [package]
 name = "wechat-pay-rust-sdk"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2021"
 authors = ["lake"]
 description = "微信支付 © Wechat Pay SDK Official (标准库)"
@@ -32,7 +32,7 @@ strum = "0.25.0"
 strum_macros = "0.25.0"
 
 [features]
-default = ["blocking"]
+default = []
 blocking = ["reqwest/blocking"]
 async = []
 

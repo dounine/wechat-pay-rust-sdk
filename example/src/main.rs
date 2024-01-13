@@ -2,8 +2,9 @@ use actix_web::web::{get, Bytes, Json, JsonConfig};
 use actix_web::{get, post, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenvy::dotenv;
 use tracing::debug;
-use wechat_pay_rust_sdk::model::{WechatPayDecodeData, WechatPayNotify};
+use wechat_pay_rust_sdk::model::{H5Params, H5SceneInfo, WechatPayDecodeData, WechatPayNotify};
 use wechat_pay_rust_sdk::pay::{PayNotifyTrait, WechatPay};
+use wechat_pay_rust_sdk::util;
 
 #[post("/pay/notify")]
 async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
@@ -36,6 +37,13 @@ async fn pay_notify3(bytes: Bytes, req: HttpRequest) -> impl Responder {
     let wechatpay_nonce = headers.get("wechatpay-nonce").unwrap().to_str().unwrap();
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     let wechat_pay = WechatPay::from_env();
+    wechat_pay
+        .h5_pay(H5Params::new(
+            "测试支付1分",
+            util::random_trade_no().as_str(),
+            1.into(),
+            H5SceneInfo::new("183.6.105.141", "ipa软件下载", "https://mydomain.com"),
+        )).await;
     let pub_key = std::fs::read_to_string("pubkey.pem").unwrap();
     let body = format!("{}\n{}\n{}\n", wechatpay_timestamp, wechatpay_nonce, body);
     wechat_pay

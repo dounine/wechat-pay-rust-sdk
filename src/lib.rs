@@ -341,15 +341,13 @@ async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
     }))
 }
 ```
-*/
+ */
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "blocking")] {
-        pub mod blocking;
-    } else if #[cfg(feature = "async")] {
-        pub mod async_impl;
-    }
-}
+
+#[cfg(feature = "blocking")]
+pub mod blocking;
+#[cfg(feature = "async")]
+pub mod async_impl;
 pub mod error;
 pub mod model;
 pub mod pay;
