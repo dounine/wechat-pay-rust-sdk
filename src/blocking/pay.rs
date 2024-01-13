@@ -1,15 +1,23 @@
-use reqwest::header::{HeaderMap, REFERER};
-use serde::Deserialize;
-use serde_json::{Map, Value};
-use tracing::debug;
 use crate::error::PayError;
 use crate::model::{AppParams, H5Params, JsapiParams, MicroParams, NativeParams, ParamsTrait};
 use crate::pay::{WechatPay, WechatPayTrait};
 use crate::request::HttpMethod;
-use crate::response::{AppResponse, CertificateResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse, ResponseTrait, SignData};
+use crate::response::{
+    AppResponse, CertificateResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse,
+    ResponseTrait, SignData,
+};
+use reqwest::header::{HeaderMap, REFERER};
+use serde::Deserialize;
+use serde_json::{Map, Value};
+use tracing::debug;
 
 impl WechatPay {
-    pub(crate) fn pay<P: ParamsTrait, R: ResponseTrait>(&self, method: HttpMethod, url: &str, json: P) -> Result<R, PayError> {
+    pub(crate) fn pay<P: ParamsTrait, R: ResponseTrait>(
+        &self,
+        method: HttpMethod,
+        url: &str,
+        json: P,
+    ) -> Result<R, PayError> {
         let json_str = json.to_json();
         debug!("json_str: {}", &json_str);
         let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
@@ -17,15 +25,11 @@ impl WechatPay {
         map.insert("mchid".to_owned(), self.mch_id().into());
         map.insert("notify_url".to_owned(), self.notify_url().into());
         let body = serde_json::to_string(&map)?;
-        let headers = self.build_header(
-            method.clone(),
-            url,
-            body.as_str(),
-        )?;
+        let headers = self.build_header(method.clone(), url, body.as_str())?;
         let client = reqwest::blocking::Client::new();
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {}", url);
-        debug!("body: {}",body);
+        debug!("body: {}", body);
         let builder = match method {
             HttpMethod::GET => client.get(url),
             HttpMethod::POST => client.post(url),
@@ -44,15 +48,11 @@ impl WechatPay {
 
     pub(crate) fn get_pay<R: ResponseTrait>(&self, url: &str) -> Result<R, PayError> {
         let body = "";
-        let headers = self.build_header(
-            HttpMethod::GET,
-            url,
-            body,
-        )?;
+        let headers = self.build_header(HttpMethod::GET, url, body)?;
         let client = reqwest::blocking::Client::new();
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {}", url);
-        debug!("body: {}",body);
+        debug!("body: {}", body);
         client
             .get(url)
             .headers(headers)
@@ -73,8 +73,7 @@ impl WechatPay {
 
     pub fn app_pay(&self, params: AppParams) -> Result<AppResponse, PayError> {
         let url = "/v3/pay/transactions/app";
-        self
-            .pay(HttpMethod::POST, url, params)
+        self.pay(HttpMethod::POST, url, params)
             .map(|mut result: AppResponse| {
                 if let Some(prepay_id) = &result.prepay_id {
                     result.sign_data = Some(self.mut_sign_data("", prepay_id));
@@ -85,8 +84,7 @@ impl WechatPay {
 
     pub fn micro_pay(&self, params: MicroParams) -> Result<MicroResponse, PayError> {
         let url = "/v3/pay/transactions/jsapi";
-        self
-            .pay(HttpMethod::POST, url, params)
+        self.pay(HttpMethod::POST, url, params)
             .map(|mut result: MicroResponse| {
                 if let Some(prepay_id) = &result.prepay_id {
                     result.sign_data = Some(self.mut_sign_data("prepay_id=", prepay_id));
@@ -111,8 +109,7 @@ impl WechatPay {
     /// ```
     pub fn jsapi_pay(&self, params: JsapiParams) -> Result<JsapiResponse, PayError> {
         let url = "/v3/pay/transactions/jsapi";
-        self
-            .pay(HttpMethod::POST, url, params)
+        self.pay(HttpMethod::POST, url, params)
             .map(|mut result: JsapiResponse| {
                 if let Some(prepay_id) = &result.prepay_id {
                     result.sign_data = Some(self.mut_sign_data("prepay_id=", prepay_id));
@@ -121,20 +118,17 @@ impl WechatPay {
             })
     }
     pub fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<Option<String>, PayError>
-        where S: AsRef<str>
+    where
+        S: AsRef<str>,
     {
         let client = reqwest::blocking::Client::new();
         let mut headers = HeaderMap::new();
         headers.insert(REFERER, referer.as_ref().parse().unwrap());
-        let body = client
-            .get(h5_url.as_ref())
-            .headers(headers)
-            .send()?;
+        let body = client.get(h5_url.as_ref()).headers(headers).send()?;
         let text = body.text()?;
-        text
-            .split("\n")
+        text.split("\n")
             .find(|line| line.contains("weixin://"))
-            .map(|line|{
+            .map(|line| {
                 line.split(r#"""#)
                     .find(|line| line.contains("weixin://"))
                     .map(|line| line.to_string())
@@ -149,12 +143,14 @@ impl WechatPay {
 
 #[cfg(test)]
 mod tests {
-    use dotenvy::dotenv;
-    use tracing::debug;
-    use crate::model::{AppParams, H5Params, H5SceneInfo, JsapiParams, MicroParams, NativeParams, SceneInfo};
+    use crate::model::{
+        AppParams, H5Params, H5SceneInfo, JsapiParams, MicroParams, NativeParams, SceneInfo,
+    };
     use crate::pay::{PayNotifyTrait, WechatPay};
     use crate::response::Certificate;
     use crate::util;
+    use dotenvy::dotenv;
+    use tracing::debug;
 
     #[inline]
     fn init_log() {
@@ -169,11 +165,9 @@ mod tests {
         init_log();
         dotenv().ok();
         let wechat_pay = WechatPay::from_env();
-        let body = wechat_pay.native_pay(NativeParams::new(
-            "测试支付1分",
-            "1243243",
-            1.into(),
-        )).expect("native_pay error");
+        let body = wechat_pay
+            .native_pay(NativeParams::new("测试支付1分", "1243243", 1.into()))
+            .expect("native_pay error");
         debug!("body: {:?}", body);
     }
 
@@ -182,12 +176,14 @@ mod tests {
         init_log();
         dotenv().ok();
         let wechat_pay = WechatPay::from_env();
-        let body = wechat_pay.jsapi_pay(JsapiParams::new(
-            "测试支付1分",
-            "1243243",
-            1.into(),
-            "open_id".into(),
-        )).expect("jsapi_pay error");
+        let body = wechat_pay
+            .jsapi_pay(JsapiParams::new(
+                "测试支付1分",
+                "1243243",
+                1.into(),
+                "open_id".into(),
+            ))
+            .expect("jsapi_pay error");
         debug!("body: {:?}", body);
     }
 
@@ -196,12 +192,14 @@ mod tests {
         init_log();
         dotenv().ok();
         let wechat_pay = WechatPay::from_env();
-        let body = wechat_pay.micro_pay(MicroParams::new(
-            "测试支付1分",
-            "1243243",
-            1.into(),
-            "open_id".into(),
-        )).expect("micro_pay error");
+        let body = wechat_pay
+            .micro_pay(MicroParams::new(
+                "测试支付1分",
+                "1243243",
+                1.into(),
+                "open_id".into(),
+            ))
+            .expect("micro_pay error");
         debug!("body: {:?}", body);
     }
 
@@ -210,19 +208,16 @@ mod tests {
         init_log();
         dotenv().ok();
         let wechat_pay = WechatPay::from_env();
-        let body = wechat_pay.app_pay(AppParams::new(
-            "测试支付1分",
-            "1243243",
-            1.into(),
-        )).expect("app_pay error");
+        let body = wechat_pay
+            .app_pay(AppParams::new("测试支付1分", "1243243", 1.into()))
+            .expect("app_pay error");
         debug!("body: {:?}", body);
     }
 
     #[test]
-    pub fn test_str(){
+    pub fn test_str() {
         let str = r#" deeplink : "weixin://wap/pay?prepayid%3Dwx122129234529163c948432e26bc0030000&package=4206921243&noncestr=1705066163&sign=788bc4a9f8f44c6f708aff38c4b48a85""#;
-        let strs = str.split(r#"""#)
-            .find(|line| line.contains("weixin://"));
+        let strs = str.split(r#"""#).find(|line| line.contains("weixin://"));
     }
 
     #[test]
@@ -230,13 +225,17 @@ mod tests {
         init_log();
         dotenv().ok();
         let wechat_pay = WechatPay::from_env();
-        let body = wechat_pay.h5_pay(H5Params::new(
-            "测试支付1分",
-            util::random_trade_no().as_str(),
-            1.into(),
-            H5SceneInfo::new("183.6.105.141", "ipa软件下载", "https://mydomain.com"),
-        )).expect("h5_pay error");
-        let weixin_url = wechat_pay.get_weixin(body.h5_url.unwrap().as_str(), "https://mydomain.com").unwrap();
+        let body = wechat_pay
+            .h5_pay(H5Params::new(
+                "测试支付1分",
+                util::random_trade_no().as_str(),
+                1.into(),
+                H5SceneInfo::new("183.6.105.141", "ipa软件下载", "https://mydomain.com"),
+            ))
+            .expect("h5_pay error");
+        let weixin_url = wechat_pay
+            .get_weixin(body.h5_url.unwrap().as_str(), "https://mydomain.com")
+            .unwrap();
         debug!("weixin_url: {}", weixin_url.unwrap());
     }
 
@@ -259,7 +258,9 @@ mod tests {
         let ciphertext = data.encrypt_certificate.ciphertext;
         let nonce = data.encrypt_certificate.nonce;
         let associated_data = data.encrypt_certificate.associated_data;
-        let data = wechat_pay.decrypt_bytes(ciphertext, nonce, associated_data).unwrap();
+        let data = wechat_pay
+            .decrypt_bytes(ciphertext, nonce, associated_data)
+            .unwrap();
         debug!("data: {}", String::from_utf8_lossy(data.as_ref()));
     }
 }

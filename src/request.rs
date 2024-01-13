@@ -1,4 +1,4 @@
-use strum_macros::{Display};
+use strum_macros::Display;
 
 #[derive(Debug, Display, Clone, PartialEq, Eq)]
 #[strum(serialize_all = "UPPERCASE")]

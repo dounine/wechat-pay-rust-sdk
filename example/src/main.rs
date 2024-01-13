@@ -1,5 +1,5 @@
-use actix_web::{App, get, HttpRequest, HttpResponse, HttpServer, post, Responder};
-use actix_web::web::{Bytes, get, Json, JsonConfig};
+use actix_web::web::{get, Bytes, Json, JsonConfig};
+use actix_web::{get, post, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenvy::dotenv;
 use tracing::debug;
 use wechat_pay_rust_sdk::model::{WechatPayDecodeData, WechatPayNotify};
@@ -23,20 +23,30 @@ async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
 #[post("/pay/notify3")]
 async fn pay_notify3(bytes: Bytes, req: HttpRequest) -> impl Responder {
     let headers = req.headers();
-    let wechatpay_signatrue = headers.get("wechatpay-signature").unwrap().to_str().unwrap();
-    let wechatpay_timestamp = headers.get("wechatpay-timestamp").unwrap().to_str().unwrap();
+    let wechatpay_signatrue = headers
+        .get("wechatpay-signature")
+        .unwrap()
+        .to_str()
+        .unwrap();
+    let wechatpay_timestamp = headers
+        .get("wechatpay-timestamp")
+        .unwrap()
+        .to_str()
+        .unwrap();
     let wechatpay_nonce = headers.get("wechatpay-nonce").unwrap().to_str().unwrap();
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     let wechat_pay = WechatPay::from_env();
     let pub_key = std::fs::read_to_string("pubkey.pem").unwrap();
     let body = format!("{}\n{}\n{}\n", wechatpay_timestamp, wechatpay_nonce, body);
-    wechat_pay.verify_signatrue(
-        pub_key.as_str(),
-        wechatpay_timestamp,
-        wechatpay_nonce,
-        wechatpay_signatrue,
-        body.as_str(),
-    ).expect("签名验证失败，非法数据");
+    wechat_pay
+        .verify_signatrue(
+            pub_key.as_str(),
+            wechatpay_timestamp,
+            wechatpay_nonce,
+            wechatpay_signatrue,
+            body.as_str(),
+        )
+        .expect("签名验证失败，非法数据");
     HttpResponse::Ok().json(serde_json::json!({
         "code": "SUCCESS",
         "message": "成功"
@@ -49,7 +59,11 @@ async fn home() -> impl Responder {
 }
 
 #[post("/pay/notify2")]
-async fn pay_notify2(bytes: Bytes, data: Json<WechatPayNotify>, req: HttpRequest) -> impl Responder {
+async fn pay_notify2(
+    bytes: Bytes,
+    data: Json<WechatPayNotify>,
+    req: HttpRequest,
+) -> impl Responder {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     debug!("body: {}", body);
     req.headers().iter().for_each(|(k, v)| {
@@ -62,11 +76,9 @@ async fn pay_notify2(bytes: Bytes, data: Json<WechatPayNotify>, req: HttpRequest
     let associated_data = data.resource.associated_data.unwrap_or_default();
     dotenv().ok();
     let wechat_pay = WechatPay::from_env();
-    let result: WechatPayDecodeData = wechat_pay.decrypt_paydata(
-        ciphertext,
-        nonce,
-        associated_data,
-    ).unwrap();
+    let result: WechatPayDecodeData = wechat_pay
+        .decrypt_paydata(ciphertext, nonce, associated_data)
+        .unwrap();
     debug!("result: {:#?}", result);
     HttpResponse::Ok().json(serde_json::json!({
         "code": "SUCCESS",
@@ -86,8 +98,8 @@ async fn main() -> std::io::Result<()> {
             .service(pay_notify2)
             .service(home)
     })
-        .bind(("0.0.0.0", 8080))?
-        .workers(1)
-        .run()
-        .await
+    .bind(("0.0.0.0", 8080))?
+    .workers(1)
+    .run()
+    .await
 }

@@ -1,5 +1,5 @@
-use std::fmt::{Formatter};
 use serde::{Deserialize, Serialize};
+use std::fmt::Formatter;
 use strum_macros::Display;
 
 pub trait ParamsTrait {
@@ -22,9 +22,7 @@ pub struct AmountInfo {
 
 impl From<i32> for AmountInfo {
     fn from(value: i32) -> Self {
-        Self {
-            total: value,
-        }
+        Self { total: value }
     }
 }
 
@@ -115,7 +113,6 @@ pub struct SceneInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub store_info: Option<StoreInfo>,
 }
-
 
 #[derive(Serialize, Display, Debug, Clone)]
 pub enum H5Type {
@@ -248,7 +245,12 @@ impl ParamsTrait for MicroParams {
 }
 
 impl MicroParams {
-    pub fn new<S: AsRef<str>>(description: S, out_trade_no: S, amount: AmountInfo, payer: PayerInfo) -> Self {
+    pub fn new<S: AsRef<str>>(
+        description: S,
+        out_trade_no: S,
+        amount: AmountInfo,
+        payer: PayerInfo,
+    ) -> Self {
         Self {
             description: description.as_ref().to_string(),
             out_trade_no: out_trade_no.as_ref().to_string(),
@@ -263,7 +265,12 @@ impl MicroParams {
 }
 
 impl JsapiParams {
-    pub fn new<S: AsRef<str>>(description: S, out_trade_no: S, amount: AmountInfo, payer: PayerInfo) -> Self {
+    pub fn new<S: AsRef<str>>(
+        description: S,
+        out_trade_no: S,
+        amount: AmountInfo,
+        payer: PayerInfo,
+    ) -> Self {
         Self {
             description: description.as_ref().to_string(),
             out_trade_no: out_trade_no.as_ref().to_string(),
@@ -416,7 +423,12 @@ impl ParamsTrait for H5Params {
 }
 
 impl H5Params {
-    pub fn new<S: AsRef<str>>(description: S, out_trade_no: S, amount: AmountInfo, scene_info: H5SceneInfo) -> Self {
+    pub fn new<S: AsRef<str>>(
+        description: S,
+        out_trade_no: S,
+        amount: AmountInfo,
+        scene_info: H5SceneInfo,
+    ) -> Self {
         Self {
             description: description.as_ref().to_string(),
             out_trade_no: out_trade_no.as_ref().to_string(),
