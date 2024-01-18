@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use crate::error::PayError;
 use crate::model::{AppParams, H5Params, JsapiParams, MicroParams, NativeParams, ParamsTrait};
 use crate::pay::{WechatPay, WechatPayTrait};
@@ -9,7 +10,11 @@ use crate::response::{
 use reqwest::header::{HeaderMap, REFERER};
 use serde::Deserialize;
 use serde_json::{Map, Value};
-use tracing::debug;
+cfg_if! {
+    if #[cfg(feature= "debug-print")] {
+        use tracing::debug;
+    }
+}
 
 impl WechatPay {
     pub(crate) fn pay<P: ParamsTrait, R: ResponseTrait>(
@@ -19,7 +24,11 @@ impl WechatPay {
         json: P,
     ) -> Result<R, PayError> {
         let json_str = json.to_json();
-        debug!("json_str: {}", &json_str);
+        cfg_if! {
+            if #[cfg(feature= "debug-print")] {
+                debug!("json_str: {}", &json_str);
+            }
+        }
         let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
         map.insert("appid".to_owned(), self.appid().into());
         map.insert("mchid".to_owned(), self.mch_id().into());
@@ -28,8 +37,12 @@ impl WechatPay {
         let headers = self.build_header(method.clone(), url, body.as_str())?;
         let client = reqwest::blocking::Client::new();
         let url = format!("{}{}", self.base_url(), url);
-        debug!("url: {}", url);
-        debug!("body: {}", body);
+        cfg_if! {
+            if #[cfg(feature= "debug-print")] {
+                debug!("url: {}", url);
+                debug!("body: {}", body);
+            }
+        }
         let builder = match method {
             HttpMethod::GET => client.get(url),
             HttpMethod::POST => client.post(url),
@@ -51,8 +64,12 @@ impl WechatPay {
         let headers = self.build_header(HttpMethod::GET, url, body)?;
         let client = reqwest::blocking::Client::new();
         let url = format!("{}{}", self.base_url(), url);
-        debug!("url: {}", url);
-        debug!("body: {}", body);
+        cfg_if! {
+            if #[cfg(feature= "debug-print")] {
+                debug!("url: {}", url);
+                debug!("body: {}", body);
+            }
+        }
         client
             .get(url)
             .headers(headers)

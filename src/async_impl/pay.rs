@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use crate::error::PayError;
 use crate::model::AppParams;
 use crate::model::H5Params;
@@ -15,7 +16,11 @@ use crate::response::ResponseTrait;
 use crate::response::{CertificateResponse, NativeResponse};
 use reqwest::header::{HeaderMap, REFERER};
 use serde_json::{Map, Value};
-use tracing::debug;
+cfg_if! {
+    if #[cfg(feature= "debug-print")] {
+        use tracing::debug;
+    }
+}
 
 impl WechatPay {
     pub(crate) async fn pay<P: ParamsTrait, R: ResponseTrait>(
@@ -25,7 +30,11 @@ impl WechatPay {
         json: P,
     ) -> Result<R, PayError> {
         let json_str = json.to_json();
-        debug!("json_str: {}", &json_str);
+        cfg_if! {
+            if #[cfg(feature= "debug-print")] {
+                debug!("json_str: {}", &json_str);
+            }
+        }
         let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
         map.insert("appid".to_owned(), self.appid().into());
         map.insert("mchid".to_owned(), self.mch_id().into());
@@ -34,8 +43,12 @@ impl WechatPay {
         let headers = self.build_header(method.clone(), url, body.as_str())?;
         let client = reqwest::Client::new();
         let url = format!("{}{}", self.base_url(), url);
-        debug!("url: {}", url);
-        debug!("body: {}", body);
+        cfg_if! {
+            if #[cfg(feature= "debug-print")] {
+                debug!("url: {}", url);
+                debug!("body: {}", body);
+            }
+        }
         let builder = match method {
             HttpMethod::GET => client.get(url),
             HttpMethod::POST => client.post(url),
@@ -59,8 +72,12 @@ impl WechatPay {
         let headers = self.build_header(HttpMethod::GET, url, body)?;
         let client = reqwest::Client::new();
         let url = format!("{}{}", self.base_url(), url);
-        debug!("url: {}", url);
-        debug!("body: {}", body);
+        cfg_if! {
+            if #[cfg(feature= "debug-print")] {
+                debug!("url: {}", url);
+                debug!("body: {}", body);
+            }
+        }
         client
             .get(url)
             .headers(headers)
@@ -119,8 +136,8 @@ impl WechatPay {
         self.get_pay(url).await
     }
     pub async fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<Option<String>, PayError>
-    where
-        S: AsRef<str>,
+        where
+            S: AsRef<str>,
     {
         let client = reqwest::Client::new();
         let mut headers = HeaderMap::new();

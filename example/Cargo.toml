@@ -9,7 +9,7 @@ publish = false
 [dependencies]
 actix-web = "4.4.1"
 dotenvy = "0.15.7"
-wechat-pay-rust-sdk = { path = "..",features = ["async"]}
+wechat-pay-rust-sdk = { path = "..", features = ["async", "debug-print"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 tokio = { version = "1.35.1", features = ["full"] }

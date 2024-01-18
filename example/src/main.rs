@@ -100,14 +100,15 @@ async fn main() -> std::io::Result<()> {
         .with_max_level(tracing::Level::DEBUG)
         .with_line_number(true)
         .init();
+
     HttpServer::new(move || {
         App::new()
             .service(pay_notify)
             .service(pay_notify2)
             .service(home)
     })
-    .bind(("0.0.0.0", 8080))?
-    .workers(1)
-    .run()
-    .await
+        .bind(("0.0.0.0", 8080))?
+        .workers(1)
+        .run()
+        .await
 }

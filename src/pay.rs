@@ -8,12 +8,17 @@ use aes_gcm::{
     aead::{AeadCore, AeadInPlace, KeyInit, OsRng},
     Aes256Gcm, Key, Nonce,
 };
+use cfg_if::cfg_if;
 use reqwest::header::{HeaderMap, ACCEPT, AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
 use rsa::sha2::{Digest, Sha256};
 use rsa::signature::DigestVerifier;
 use rsa::{Pkcs1v15Sign, RsaPublicKey};
-use tracing::debug;
+cfg_if! {
+    if #[cfg(feature= "debug-print")] {
+        use tracing::debug;
+    }
+}
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -40,8 +45,8 @@ pub trait PayNotifyTrait: WechatPayTrait {
         signatrue: S,
         body: S,
     ) -> Result<(), PayError>
-    where
-        S: AsRef<str>,
+        where
+            S: AsRef<str>,
     {
         let message = format!(
             "{}\n{}\n{}\n",
@@ -64,8 +69,8 @@ pub trait PayNotifyTrait: WechatPayTrait {
         nonce: S,
         associated_data: S,
     ) -> Result<WechatPayDecodeData, PayError>
-    where
-        S: AsRef<str>,
+        where
+            S: AsRef<str>,
     {
         let plaintext = self.decrypt_bytes(ciphertext, nonce, associated_data)?;
         let data: WechatPayDecodeData = serde_json::from_slice(&plaintext)?;
@@ -77,8 +82,8 @@ pub trait PayNotifyTrait: WechatPayTrait {
         nonce: S,
         associated_data: S,
     ) -> Result<Vec<u8>, PayError>
-    where
-        S: AsRef<str>,
+        where
+            S: AsRef<str>,
     {
         if nonce.as_ref().len() != 12 {
             return Err(PayError::DecryptError(
@@ -117,8 +122,8 @@ pub(crate) trait WechatPayTrait {
     }
 
     fn mut_sign_data<S>(&self, prefix: S, prepay_id: S) -> SignData
-    where
-        S: AsRef<str>,
+        where
+            S: AsRef<str>,
     {
         let app_id = self.appid();
         let now_time = self.now_timestamp();
@@ -196,6 +201,18 @@ impl WechatPay {
         }
     }
 
+    pub fn open_debug(&self) {
+        cfg_if! {
+            if #[cfg(feature = "debug-print")] {
+                std::env::set_var("RUST_LOG", "oss=debug");
+                tracing_subscriber::fmt()
+                    .with_max_level(tracing::Level::DEBUG)
+                    .with_line_number(true)
+                    .init();
+            }
+        }
+    }
+
     pub fn from_env() -> Self {
         let appid = std::env::var("WECHAT_APPID").expect("WECHAT_APPID not found");
         let mch_id = std::env::var("WECHAT_MCH_ID").expect("WECHAT_MCH_ID not found");
@@ -224,7 +241,11 @@ impl WechatPay {
             "{}\n{}\n{}\n{}\n{}\n",
             method, url, timestamp, nonce_str, body,
         );
-        debug!("rsa_sign message: {}", message);
+        cfg_if! {
+            if #[cfg(feature= "debug-print")] {
+                debug!("rsa_sign message: {}", message);
+            }
+        }
         let signature = self.rsa_sign(message);
         let authorization = format!(
             "WECHATPAY2-SHA256-RSA2048 mchid=\"{}\",nonce_str=\"{}\",signature=\"{}\",timestamp=\"{}\",serial_no=\"{}\"",
@@ -234,7 +255,11 @@ impl WechatPay {
             timestamp,
             serial_no,
         );
-        debug!("authorization: {}", authorization);
+        cfg_if! {
+            if #[cfg(feature= "debug-print")] {
+                debug!("authorization: {}", authorization);
+            }
+        }
         let mut headers = HeaderMap::new();
         headers.insert(ACCEPT, "application/json".parse().unwrap());
         let chrome_agent = "Mozilla/5.0 (Linux; Android 10; Redmi K30 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Mobile Safari/537.36";
