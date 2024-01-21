@@ -19,12 +19,12 @@
 # 使用指南
 引入依赖
 ```toml
-# 同步
-wechat-pay-rust-sdk = {version = "0.2.10", features = ["blocking"]}
 #异步
-wechat-pay-rust-sdk = {version = "0.2.10", features = ["async"]}
+wechat-pay-rust-sdk = {version = "0.2.11"}
+# 同步
+wechat-pay-rust-sdk = {version = "0.2.11", features = ["blocking"]}
 # debug日志开启
-wechat-pay-rust-sdk = {version = "0.2.10", features = ["blocking","debug-print"]}
+wechat-pay-rust-sdk = {version = "0.2.11", features = ["blocking","debug-print"]}
 ```
 
 ## native支付
@@ -350,7 +350,7 @@ async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
-#[cfg(feature = "async")]
+#[cfg(not(feature = "blocking"))]
 pub mod async_impl;
 pub mod error;
 pub mod model;

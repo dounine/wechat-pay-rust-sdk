@@ -1,6 +1,6 @@
 [package]
 name = "wechat-pay-rust-sdk"
-version = "0.2.10"
+version = "0.2.11"
 edition = "2021"
 authors = ["lake"]
 description = "微信支付 © Wechat Pay SDK Official (标准库)"
@@ -32,7 +32,6 @@ serde_json = "1.0.111"
 [features]
 default = []
 blocking = ["reqwest/blocking"]
-async = []
 debug-print = ["tracing", "tracing-subscriber"]
 
 [dev-dependencies]

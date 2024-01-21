@@ -19,7 +19,7 @@ impl WechatPay {
         json: P,
     ) -> Result<R, PayError> {
         let json_str = json.to_json();
-        debug!("json_str: {}", &json_str);
+        debug!("json_str: {}", json_str);
         let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
         map.insert("appid".to_owned(), self.appid().into());
         map.insert("mchid".to_owned(), self.mch_id().into());
