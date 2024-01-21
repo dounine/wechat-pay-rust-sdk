@@ -16,11 +16,7 @@ use crate::response::ResponseTrait;
 use crate::response::{CertificateResponse, NativeResponse};
 use reqwest::header::{HeaderMap, REFERER};
 use serde_json::{Map, Value};
-cfg_if! {
-    if #[cfg(feature= "debug-print")] {
-        use tracing::debug;
-    }
-}
+use crate::{debug};
 
 impl WechatPay {
     pub(crate) async fn pay<P: ParamsTrait, R: ResponseTrait>(
@@ -30,11 +26,7 @@ impl WechatPay {
         json: P,
     ) -> Result<R, PayError> {
         let json_str = json.to_json();
-        cfg_if! {
-            if #[cfg(feature= "debug-print")] {
-                debug!("json_str: {}", &json_str);
-            }
-        }
+        debug!("json_str: {}", &json_str);
         let mut map: Map<String, Value> = serde_json::from_str(&json_str)?;
         map.insert("appid".to_owned(), self.appid().into());
         map.insert("mchid".to_owned(), self.mch_id().into());
@@ -43,12 +35,7 @@ impl WechatPay {
         let headers = self.build_header(method.clone(), url, body.as_str())?;
         let client = reqwest::Client::new();
         let url = format!("{}{}", self.base_url(), url);
-        cfg_if! {
-            if #[cfg(feature= "debug-print")] {
-                debug!("url: {}", url);
-                debug!("body: {}", body);
-            }
-        }
+        debug!("url: {} body: {}", url, body);
         let builder = match method {
             HttpMethod::GET => client.get(url),
             HttpMethod::POST => client.post(url),
@@ -72,12 +59,7 @@ impl WechatPay {
         let headers = self.build_header(HttpMethod::GET, url, body)?;
         let client = reqwest::Client::new();
         let url = format!("{}{}", self.base_url(), url);
-        cfg_if! {
-            if #[cfg(feature= "debug-print")] {
-                debug!("url: {}", url);
-                debug!("body: {}", body);
-            }
-        }
+        debug!("url: {} body: {}", url, body);
         client
             .get(url)
             .headers(headers)

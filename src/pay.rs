@@ -2,7 +2,7 @@ use crate::error::PayError;
 use crate::model::WechatPayDecodeData;
 use crate::request::HttpMethod;
 use crate::response::SignData;
-use crate::{sign, util};
+use crate::{debug, sign, util};
 use aes_gcm::aead::{AeadMut, Payload};
 use aes_gcm::{
     aead::{AeadCore, AeadInPlace, KeyInit, OsRng},
@@ -14,11 +14,6 @@ use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
 use rsa::sha2::{Digest, Sha256};
 use rsa::signature::DigestVerifier;
 use rsa::{Pkcs1v15Sign, RsaPublicKey};
-cfg_if! {
-    if #[cfg(feature= "debug-print")] {
-        use tracing::debug;
-    }
-}
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -241,11 +236,7 @@ impl WechatPay {
             "{}\n{}\n{}\n{}\n{}\n",
             method, url, timestamp, nonce_str, body,
         );
-        cfg_if! {
-            if #[cfg(feature= "debug-print")] {
-                debug!("rsa_sign message: {}", message);
-            }
-        }
+        debug!("rsa_sign message: {}", message);
         let signature = self.rsa_sign(message);
         let authorization = format!(
             "WECHATPAY2-SHA256-RSA2048 mchid=\"{}\",nonce_str=\"{}\",signature=\"{}\",timestamp=\"{}\",serial_no=\"{}\"",
@@ -255,11 +246,7 @@ impl WechatPay {
             timestamp,
             serial_no,
         );
-        cfg_if! {
-            if #[cfg(feature= "debug-print")] {
-                debug!("authorization: {}", authorization);
-            }
-        }
+        debug!("authorization: {}", authorization);
         let mut headers = HeaderMap::new();
         headers.insert(ACCEPT, "application/json".parse().unwrap());
         let chrome_agent = "Mozilla/5.0 (Linux; Android 10; Redmi K30 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Mobile Safari/537.36";

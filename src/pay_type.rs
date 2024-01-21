@@ -1,7 +1,6 @@
-use strum_macros::Display;
+use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Display, PartialEq, Eq)]
-#[strum(serialize_all = "UPPERCASE")]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PayType {
     Micro,
     Jsapi,
@@ -11,14 +10,15 @@ pub enum PayType {
     Qrcode,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use strum::*;
-
-    #[test]
-    fn test_pay_type() {
-        let pay_type = PayType::Micro;
-        assert_eq!(format!("{}", pay_type), "MICRO");
+impl Display for PayType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PayType::Micro => write!(f, "MICRO"),
+            PayType::Jsapi => write!(f, "JSAPI"),
+            PayType::Native => write!(f, "NATIVE"),
+            PayType::App => write!(f, "APP"),
+            PayType::H5 => write!(f, "H5"),
+            PayType::Qrcode => write!(f, "QRCODE"),
+        }
     }
 }

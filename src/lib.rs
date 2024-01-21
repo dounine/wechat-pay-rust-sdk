@@ -360,3 +360,4 @@ pub mod request;
 pub mod response;
 pub mod sign;
 pub mod util;
+pub(crate) mod macros;

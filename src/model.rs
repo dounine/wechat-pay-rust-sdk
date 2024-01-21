@@ -1,13 +1,21 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::Formatter;
-use strum_macros::Display;
+use std::fmt::{Display, Formatter};
 
 pub trait ParamsTrait {
     fn to_json(&self) -> String;
 }
-#[derive(Serialize, Display, Debug, Clone)]
+
+#[derive(Serialize, Debug, Clone)]
 pub enum Currency {
     CNY,
+}
+
+impl Display for Currency {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Currency::CNY => write!(f, "CNY"),
+        }
+    }
 }
 
 unsafe impl Send for Currency {}
@@ -114,14 +122,21 @@ pub struct SceneInfo {
     pub store_info: Option<StoreInfo>,
 }
 
-#[derive(Serialize, Display, Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub enum H5Type {
-    #[strum(serialize = "iOS")]
     Ios,
-    #[strum(serialize = "Android")]
     Android,
-    #[strum(serialize = "Wap")]
     Wap,
+}
+
+impl Display for H5Type {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            H5Type::Ios => write!(f, "iOS"),
+            H5Type::Android => write!(f, "Android"),
+            H5Type::Wap => write!(f, "Wap"),
+        }
+    }
 }
 
 #[derive(Serialize, Debug, Clone)]
