@@ -19,11 +19,11 @@
 引入依赖
 ```toml
 #异步
-wechat-pay-rust-sdk = {version = "0.2.11"}
+wechat-pay-rust-sdk = {version = "x.x.x"}
 # 同步
-wechat-pay-rust-sdk = {version = "0.2.11", features = ["blocking"]}
+wechat-pay-rust-sdk = {version = "x.x.x", features = ["blocking"]}
 # debug日志开启
-wechat-pay-rust-sdk = {version = "0.2.11", features = ["blocking","debug-print"]}
+wechat-pay-rust-sdk = {version = "x.x.x", features = ["blocking","debug-print"]}
 ```
 
 ## native支付

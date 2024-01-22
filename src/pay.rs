@@ -5,14 +5,12 @@ use crate::response::SignData;
 use crate::{debug, sign, util};
 use aes_gcm::aead::{AeadMut, Payload};
 use aes_gcm::{
-    aead::{AeadCore, AeadInPlace, KeyInit, OsRng},
-    Aes256Gcm, Key, Nonce,
+    aead::{KeyInit},
+    Aes256Gcm,
 };
-use cfg_if::cfg_if;
 use reqwest::header::{HeaderMap, ACCEPT, AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
-use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
+use rsa::pkcs8::{DecodePublicKey};
 use rsa::sha2::{Digest, Sha256};
-use rsa::signature::DigestVerifier;
 use rsa::{Pkcs1v15Sign, RsaPublicKey};
 use uuid::Uuid;
 
@@ -50,7 +48,7 @@ pub trait PayNotifyTrait: WechatPayTrait {
             body.as_ref()
         );
         let pub_key = RsaPublicKey::from_public_key_pem(pub_key)
-            .map_err(|e| PayError::VerifyError("public key parser error".to_string()))?;
+            .map_err(|e| PayError::VerifyError(format!("public key parser error: {}",e)))?;
         let hashed = Sha256::new().chain_update(message).finalize();
         let signatrue = util::base64_decode(signatrue.as_ref())?;
         let scheme = Pkcs1v15Sign::new::<Sha256>();
@@ -100,7 +98,7 @@ pub trait PayNotifyTrait: WechatPayTrait {
     }
 }
 
-pub(crate) trait WechatPayTrait {
+pub trait WechatPayTrait {
     fn appid(&self) -> String;
     fn mch_id(&self) -> String;
     fn private_key(&self) -> String;
@@ -196,16 +194,13 @@ impl WechatPay {
         }
     }
 
+    #[cfg(feature = "debug-print")]
     pub fn open_debug(&self) {
-        cfg_if! {
-            if #[cfg(feature = "debug-print")] {
-                std::env::set_var("RUST_LOG", "oss=debug");
-                tracing_subscriber::fmt()
-                    .with_max_level(tracing::Level::DEBUG)
-                    .with_line_number(true)
-                    .init();
-            }
-        }
+        std::env::set_var("RUST_LOG", "oss=debug");
+        tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .with_line_number(true)
+            .init();
     }
 
     pub fn from_env() -> Self {
@@ -259,21 +254,12 @@ impl WechatPay {
 
 #[cfg(test)]
 mod tests {
-    use crate::error::PayError;
-    use crate::model::WechatPayDecodeData;
     use crate::pay::{PayNotifyTrait, WechatPay, WechatPayTrait};
-    use crate::util;
-    use aes_gcm::aead::generic_array::GenericArray;
-    use aes_gcm::aead::{Aead, Payload};
-    use aes_gcm::{Aes256Gcm, KeyInit};
     use dotenvy::dotenv;
     use rsa::pkcs8::DecodePublicKey;
-    use rsa::sha2::{Digest, Sha256, Sha512};
-    use rsa::signature::DigestVerifier;
+    use rsa::sha2::{Digest, Sha256};
     use rsa::{Pkcs1v15Sign, RsaPublicKey};
-    use serde::__private::from_utf8_lossy;
-    use std::io;
-    use tracing::{debug, error};
+    use tracing::{debug};
     use uuid::Uuid;
 
     #[inline]
@@ -335,7 +321,7 @@ mod tests {
         let data = wechat_pay
             .decrypt_bytes(ciphertext, nonce, associated_data)
             .unwrap();
-        // debug!("data: {}", String::from_utf8(data).unwrap());
+        debug!("data: {}", String::from_utf8(data).unwrap());
     }
 
     #[test]
@@ -361,16 +347,10 @@ mod tests {
 
     #[test]
     fn test_pay_verify_sign() {
-        use rsa::{
-            pkcs1v15::{Signature, VerifyingKey},
-            signature::Verifier,
-        };
-
         let signature = std::fs::read("signature.txt").unwrap();
         let message = std::fs::read("message.txt").unwrap();
         let pub_key = RsaPublicKey::read_public_key_pem_file("pub.pem").unwrap();
 
-        /// 方法1：可行
         let hashed = rsa::sha2::Sha256::new()
             .chain_update(message.as_slice())
             .finalize();
@@ -378,7 +358,6 @@ mod tests {
         pub_key
             .verify(scheme, &hashed, signature.as_slice())
             .expect("签名验证失败");
-
         // 方法2：错误
         // let signature = Signature::try_from(signature.as_slice()).expect("签名解析失败");
         // let verifying_key: VerifyingKey<Sha256> = VerifyingKey::from(pub_key.clone());

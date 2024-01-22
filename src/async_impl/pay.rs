@@ -1,4 +1,3 @@
-use cfg_if::cfg_if;
 use crate::error::PayError;
 use crate::model::AppParams;
 use crate::model::H5Params;
@@ -161,8 +160,6 @@ mod tests {
     pub async fn test_native_pay() {
         init_log();
         dotenv().ok();
-        let private_key_path = "./apiclient_key.pem";
-        let private_key = std::fs::read_to_string(private_key_path).unwrap();
         let wechat_pay = WechatPay::from_env();
         let body = wechat_pay
             .native_pay(NativeParams::new("测试支付1分", "1243243", 1.into()))

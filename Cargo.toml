@@ -1,6 +1,6 @@
 [package]
 name = "wechat-pay-rust-sdk"
-version = "0.2.11"
+version = "0.2.12"
 edition = "2021"
 authors = ["lake"]
 description = "微信支付 © Wechat Pay SDK Official (标准库)"
@@ -15,7 +15,6 @@ members = ["example"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cfg-if = "1.0.0"
 base64 = "0.21.6"
 chrono = "0.4.31"
 rsa = { version = "0.9.6", features = ["sha2"] }
