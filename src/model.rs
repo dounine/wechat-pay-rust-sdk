@@ -217,7 +217,7 @@ pub struct JsapiParams {
     pub detail: Option<OrderDetail>,
     ///【交易结束时间】 订单失效时间，遵循rfc3339标准格式，格式为yyyy-MM-DDTHH:mm:ss+TIMEZONE，yyyy-MM-DD表示年月日，T出现在字符串中，表示time元素的开头，HH:mm:ss表示时分秒，TIMEZONE表示时区（+08:00表示东八区时间，领先UTC8小时，即北京时间）。例如：2015-05-20T13:29:35+08:00表示，北京时间2015年5月20日13点29分35秒。
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub time_expire: Option<i64>,
+    pub time_expire: Option<String>,
     ///【场景信息】 支付场景描述
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scene_info: Option<SceneInfo>,
@@ -247,7 +247,7 @@ pub struct MicroParams {
     pub detail: Option<OrderDetail>,
     ///【交易结束时间】 订单失效时间，遵循rfc3339标准格式，格式为yyyy-MM-DDTHH:mm:ss+TIMEZONE，yyyy-MM-DD表示年月日，T出现在字符串中，表示time元素的开头，HH:mm:ss表示时分秒，TIMEZONE表示时区（+08:00表示东八区时间，领先UTC8小时，即北京时间）。例如：2015-05-20T13:29:35+08:00表示，北京时间2015年5月20日13点29分35秒。
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub time_expire: Option<i64>,
+    pub time_expire: Option<String>,
     ///【场景信息】 支付场景描述
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scene_info: Option<SceneInfo>,
@@ -358,7 +358,7 @@ pub struct AppParams {
     pub amount: AmountInfo,
     ///【交易结束时间】 订单失效时间，遵循rfc3339标准格式，格式为yyyy-MM-DDTHH:mm:ss+TIMEZONE，yyyy-MM-DD表示年月日，T出现在字符串中，表示time元素的开头，HH:mm:ss表示时分秒，TIMEZONE表示时区（+08:00表示东八区时间，领先UTC8小时，即北京时间）。例如：2015-05-20T13:29:35+08:00表示，北京时间2015年5月20日13点29分35秒。
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub time_expire: Option<i64>,
+    pub time_expire: Option<String>,
     ///【附加数据】 附加数据，在查询API和支付通知中原样返回，可作为自定义参数使用，实际情况下只有支付完成状态才会返回该字段。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attach: Option<String>,
@@ -414,7 +414,7 @@ pub struct H5Params {
     pub amount: AmountInfo,
     ///【交易结束时间】 订单失效时间，遵循rfc3339标准格式，格式为yyyy-MM-DDTHH:mm:ss+TIMEZONE，yyyy-MM-DD表示年月日，T出现在字符串中，表示time元素的开头，HH:mm:ss表示时分秒，TIMEZONE表示时区（+08:00表示东八区时间，领先UTC8小时，即北京时间）。例如：2015-05-20T13:29:35+08:00表示，北京时间2015年5月20日13点29分35秒。
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub time_expire: Option<i64>,
+    pub time_expire: Option<String>,
     ///【附加数据】 附加数据，在查询API和支付通知中原样返回，可作为自定义参数使用，实际情况下只有支付完成状态才会返回该字段。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attach: Option<String>,
