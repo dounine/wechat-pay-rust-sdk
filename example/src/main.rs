@@ -24,7 +24,7 @@ async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
 #[post("/pay/notify3")]
 async fn pay_notify3(bytes: Bytes, req: HttpRequest) -> impl Responder {
     let headers = req.headers();
-    let wechatpay_signatrue = headers
+    let wechatpay_signature = headers
         .get("wechatpay-signature")
         .unwrap()
         .to_str()
@@ -47,11 +47,11 @@ async fn pay_notify3(bytes: Bytes, req: HttpRequest) -> impl Responder {
     let pub_key = std::fs::read_to_string("pubkey.pem").unwrap();
     let body = format!("{}\n{}\n{}\n", wechatpay_timestamp, wechatpay_nonce, body);
     wechat_pay
-        .verify_signatrue(
+        .verify_signature(
             pub_key.as_str(),
             wechatpay_timestamp,
             wechatpay_nonce,
-            wechatpay_signatrue,
+            wechatpay_signature,
             body.as_str(),
         )
         .expect("签名验证失败，非法数据");

@@ -1,6 +1,6 @@
 [package]
 name = "wechat-pay-rust-sdk"
-version = "0.2.14"
+version = "0.2.15"
 edition = "2021"
 authors = ["lake"]
 description = "微信支付 © Wechat Pay SDK Official (标准库)"
@@ -26,6 +26,8 @@ uuid = { version = "1.6.1", features = ["v4"] }
 tracing = { version = "0.1.40", optional = true }
 tracing-subscriber = { version = "0.3.18", optional = true }
 serde = { version = "1.0.195", features = ["derive"] }
+pem = "3.0"
+x509-parser = "0.16"
 serde_json = "1.0.111"
 
 [features]

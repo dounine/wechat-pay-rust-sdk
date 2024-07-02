@@ -30,12 +30,12 @@ unsafe impl Send for WechatPay {}
 unsafe impl Sync for WechatPay {}
 
 pub trait PayNotifyTrait: WechatPayTrait {
-    fn verify_signatrue<S>(
+    fn verify_signature<S>(
         &self,
         pub_key: &str,
         timestamp: S,
         nonce: S,
-        signatrue: S,
+        signature: S,
         body: S,
     ) -> Result<(), PayError>
         where
@@ -50,10 +50,10 @@ pub trait PayNotifyTrait: WechatPayTrait {
         let pub_key = RsaPublicKey::from_public_key_pem(pub_key)
             .map_err(|e| PayError::VerifyError(format!("public key parser error: {}",e)))?;
         let hashed = Sha256::new().chain_update(message).finalize();
-        let signatrue = util::base64_decode(signatrue.as_ref())?;
+        let signature = util::base64_decode(signature.as_ref())?;
         let scheme = Pkcs1v15Sign::new::<Sha256>();
         pub_key
-            .verify(scheme, &hashed, signatrue.as_slice())
+            .verify(scheme, &hashed, signature.as_slice())
             .map_err(|e| PayError::VerifyError(e.to_string()))
     }
     fn decrypt_paydata<S>(
@@ -330,16 +330,16 @@ mod tests {
         dotenv().ok();
         let wechat_pay = WechatPay::from_env();
         let pub_key = std::fs::read_to_string("pub.pem").unwrap();
-        let wechatpay_signatrue = "mFgmwXAKL3YJj34b7f+cUG3vkW09TiXU4lOSzCbvWFtvyLTb5WiyfAiVXZmMB17Qh9gDVkqboO97zfIYfv+AVdxj3GQljWlW+vE1Ujn2uxiFld6bWwz8Znk+833ruzZ8mAIaqLEjI/HKuVPdTj4LFzh/EO+gEMR6WDXr+7cZV7D3qUTXuO26fHLe0PmleDziG8SPgYjihK1ztF3Os0NhvL5tQMM8LKDOMzO3kxSr/TqTBtsB/OnuP2mH8yaSUeYeTpGStYvSw8KVi+gk6VnrlkVmdFh3DDXY60GCzCZ8zPl12RmzZbBRSK8ocVrzs4tuqRa5Euk3cDIA6qHqS8hyBQ==";
+        let wechatpay_signature = "mFgmwXAKL3YJj34b7f+cUG3vkW09TiXU4lOSzCbvWFtvyLTb5WiyfAiVXZmMB17Qh9gDVkqboO97zfIYfv+AVdxj3GQljWlW+vE1Ujn2uxiFld6bWwz8Znk+833ruzZ8mAIaqLEjI/HKuVPdTj4LFzh/EO+gEMR6WDXr+7cZV7D3qUTXuO26fHLe0PmleDziG8SPgYjihK1ztF3Os0NhvL5tQMM8LKDOMzO3kxSr/TqTBtsB/OnuP2mH8yaSUeYeTpGStYvSw8KVi+gk6VnrlkVmdFh3DDXY60GCzCZ8zPl12RmzZbBRSK8ocVrzs4tuqRa5Euk3cDIA6qHqS8hyBQ==";
         let body = r#"{"id":"29a61973-babf-599a-966d-6bcdcf17360c","create_time":"2024-01-12T21:39:44+08:00","resource_type":"encrypt-resource","event_type":"TRANSACTION.SUCCESS","summary":"支付成功","resource":{"original_type":"transaction","algorithm":"AEAD_AES_256_GCM","ciphertext":"5ZfDK+LRJakAkC7kdHKRzCu5WZ0JFC2qSwP4InWNFeUnY0uaOnzfCjiqhDTFYyP4ywxuLxPUOiVI3WT6CcU0NNqbadTQ5XzjVuKLxYSnOYCFULltIrfsT/mUF4VW+xBMgSgG4+ZdzhRXVr+AzihDKFjw2p1iCtLYz9emgToctygNBtV6JDEI2BnCoiEM7qyIU1ALv5IsufQHDQqzjYXd16OD3i6O8UeSE2GOd4ifmQrAKGKalwWPECI73/qTFoAcLcgbhhn1TeSEaHoF7xceDmkL9AGlC21pBwYWoibTgqdlDJiz3IctrCzH6PPXD8XcApEj4A3ByyPjaNs6HxaJGzEHYGUkyM2/b7SzZIzqlBmNRZYFvBC0BOwoktyxrIhg3bKSbYtDYt1+8lMaYIJW6Dgq9GjG6pxAVrYULt8sk8cKZ+OrK9iXHZI11pYyK9YwWJLXbs6GyjMdDxhaGilF9csK8ZSsKzUjvlcLCjboCFX6nuHvCbswchYchQhTeitKDKG3/q+4snY183dBA6rXBHKQduqc1vXRR6odMcU1Evvy5mKnDTDELlI6mqvBtJ10XNED5O43ga5ZAODxYoU=","associated_data":"transaction","nonce":"uaGeNnBYNjl7"}}"#;
         let wechatpay_timestamp = "1705066785";
         let wechatpay_nonce = "Jh9oPZelCJIQeQ47kz4stzvDKpLEUhCX";
         wechat_pay
-            .verify_signatrue(
+            .verify_signature(
                 pub_key.as_str(),
                 wechatpay_timestamp,
                 wechatpay_nonce,
-                wechatpay_signatrue,
+                wechatpay_signature,
                 body,
             )
             .unwrap();

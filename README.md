@@ -275,49 +275,47 @@ let ciphertext = data.encrypt_certificate.ciphertext;
 let nonce = data.encrypt_certificate.nonce;
 let associated_data = data.encrypt_certificate.associated_data;
 let data = wechat_pay.decrypt_bytes(ciphertext, nonce, associated_data).unwrap();
-println!("cer: {}", String::from_utf8(data).unwrap());
-```
-输出证书
-```text
------BEGIN CERTIFICATE-----
-MIIEFDCCAvygAwIBAgIUMlB/Z9BelEPjntPn1dvyG7ROXQwwDQYJKoZIhvcNAQEL
-BQAwXjELMAkGA1UEBhMCQ04xEzARBgNVBAoTClRlbnBheS5jb20xHTAbBgNVBAsT
-FFRlbnBheS5jb20gQ0EgQ2VudGVyMRswGQYDVQQDExJUZW5wYXkuY29tIFJvb3Qg
-Q0EwHhcNMjMwMzIyMTQ1ODU3WhcNMjgwMzIwMTQ1ODU3WjBuMRgwFgYDVQQDDA9U
-ZW5wYXkuY29tIHNpZ24xEzARBgNVBAoMClRlbnBheS5jb20xHTAbBgNVBAsMFFRl
-xxxxxxx.....
------END CERTIFICATE-----
-```
-将上面的cert.pem证书转pem公钥
-```shell
-openssl x509 -pubkey -noout -in cert.pem > pubkey.pem
+let pub_key = util::x509_to_pem(data.as_slice()).unwrap(); //证书转公钥
+let mut pub_key_file = std::fs::File::create("pubkey.pem").unwrap();
+pub_key_file.write_all(pub_key.as_bytes()).unwrap();
+
+let (pub_key_valid, expire_timestamp) = util::x509_is_valid(data.as_slice()).unwrap();
+debug!("pub key valid:{} expire_timestamp:{}", pub_key_valid, expire_timestamp);//检测证书是否可用,打印过期时间
+println!("pub key: {}", pub_key);
 ```
 输出公钥
 ```text
 -----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4zej1cqugGQtVSY2Ah8RMCKcr2UpZ8Npo+5Ja9xpFPYkWHaF1Gjrn3d5kcwAFuHHcfdc3yxDYx6+9grvJnCA2zQzWjzVRa3BJ5LTMj6yqvhEmtvjO9D1xbFTA2m3kyjxlaIar/RYHZSslT4VmjIatW9KJCDKkwpM6x/RIWL8wwfFwgz2q3Zcrff1y72nB8p8P12ndH7GSLoY6d2Tv0OB2+We2Kyy2+QzfGXOmLp7UK/pFQjJjzhSf9jxaWJXYKIBxpGlddbRZj9PqvFPTiep8rvfKGNZF9Q6QaMYTpTp/uKQ3YvpDlyeQlYe4rRFauH3mOE6j56QlYQWivknDX9VrwIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5ufQLGNv3VlQObbWxoRU
+c+8XLaogBL58i8cjapp5YqqS33cN7Qtcmiob5baV84Iu6DMClgWKB9VSaMs7vX6w
+7WM++CPxOyg3oewLKDNPBvPtXBATWRScrmFh37XxXt2wJdLItdl86jd8o0sX8o7K
+w4TIXKxlR7YQ3sxNWlbCpd4g3gkcXiV0erIbzwEn5d5n74xOTjnmbXf1FTN3K3HA
+xxxx...
 -----END PUBLIC KEY-----
+
 ```
 ## 签名验证
 使用上面的公钥用来验签
+> 平台的证书有时效性，请及时检测并下载最新的证书并替换本地公钥。
+
 ```rust
 use wechat_pay_rust_sdk::pay::{PayNotifyTrait, WechatPay};
 
 let wechat_pay = WechatPay::from_env();
 let pub_key = std::fs::read_to_string("pubkey.pem").unwrap();
 //在支付回调中header获取到的签名
-let wechatpay_signatrue = "mFgmwXAKL3YJj34b7f+cUG3vkW09TiXU4lOSzCbvWFtvyLTb5WiyfAiVXZmMB17Qh9gDVkqboO97zfIYfv+AVdxj3GQljWlW+vE1Ujn2uxiFld6bWwz8Znk+833ruzZ8mAIaqLEjI/HKuVPdTj4LFzh/EO+gEMR6WDXr+7cZV7D3qUTXuO26fHLe0PmleDziG8SPgYjihK1ztF3Os0NhvL5tQMM8LKDOMzO3kxSr/TqTBtsB/OnuP2mH8yaSUeYeTpGStYvSw8KVi+gk6VnrlkVmdFh3DDXY60GCzCZ8zPl12RmzZbBRSK8ocVrzs4tuqRa5Euk3cDIA6qHqS8hyBQ==";
+let wechatpay_signature = "mFgmwXAKL3YJj34b7f+cUG3vkW09TiXU4lOSzCbvWFtvyLTb5WiyfAiVXZmMB17Qh9gDVkqboO97zfIYfv+AVdxj3GQljWlW+vE1Ujn2uxiFld6bWwz8Znk+833ruzZ8mAIaqLEjI/HKuVPdTj4LFzh/EO+gEMR6WDXr+7cZV7D3qUTXuO26fHLe0PmleDziG8SPgYjihK1ztF3Os0NhvL5tQMM8LKDOMzO3kxSr/TqTBtsB/OnuP2mH8yaSUeYeTpGStYvSw8KVi+gk6VnrlkVmdFh3DDXY60GCzCZ8zPl12RmzZbBRSK8ocVrzs4tuqRa5Euk3cDIA6qHqS8hyBQ==";
 //回调的数据
 let body = r#"{"id":"29a61973-babf-599a-966d-6bcdcf17360c","create_time":"2024-01-12T21:39:44+08:00","resource_type":"encrypt-resource","event_type":"TRANSACTION.SUCCESS","summary":"支付成功","resource":{"original_type":"transaction","algorithm":"AEAD_AES_256_GCM","ciphertext":"5ZfDK+LRJakAkC7kdHKRzCu5WZ0JFC2qSwP4InWNFeUnY0uaOnzfCjiqhDTFYyP4ywxuLxPUOiVI3WT6CcU0NNqbadTQ5XzjVuKLxYSnOYCFULltIrfsT/mUF4VW+xBMgSgG4+ZdzhRXVr+AzihDKFjw2p1iCtLYz9emgToctygNBtV6JDEI2BnCoiEM7qyIU1ALv5IsufQHDQqzjYXd16OD3i6O8UeSE2GOd4ifmQrAKGKalwWPECI73/qTFoAcLcgbhhn1TeSEaHoF7xceDmkL9AGlC21pBwYWoibTgqdlDJiz3IctrCzH6PPXD8XcApEj4A3ByyPjaNs6HxaJGzEHYGUkyM2/b7SzZIzqlBmNRZYFvBC0BOwoktyxrIhg3bKSbYtDYt1+8lMaYIJW6Dgq9GjG6pxAVrYULt8sk8cKZ+OrK9iXHZI11pYyK9YwWJLXbs6GyjMdDxhaGilF9csK8ZSsKzUjvlcLCjboCFX6nuHvCbswchYchQhTeitKDKG3/q+4snY183dBA6rXBHKQduqc1vXRR6odMcU1Evvy5mKnDTDELlI6mqvBtJ10XNED5O43ga5ZAODxYoU=","associated_data":"transaction","nonce":"uaGeNnBYNjl7"}}"#;
 //支付回调中header获取到的时间戳
 let wechatpay_timestamp = "1705066785";
 //支付回调中header获取到的随机串
 let wechatpay_nonce = "Jh9oPZelCJIQeQ47kz4stzvDKpLEUhCX";
-wechat_pay.verify_signatrue(
+wechat_pay.verify_signature(
     pub_key.as_str(),
     wechatpay_timestamp,
     wechatpay_nonce,
-    wechatpay_signatrue,
+    wechatpay_signature,
     body,
 ).unwrap();
 ```
@@ -327,16 +325,16 @@ actix-web中验证的例子
 async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
     let headers = req.headers();
     let pub_key = std::fs::read_to_string("pubkey.pem").unwrap();
-    let wechatpay_signatrue = headers.get("wechatpay-signature").unwrap().to_str().unwrap();
+    let wechatpay_signature = headers.get("wechatpay-signature").unwrap().to_str().unwrap();
     let wechatpay_timestamp = headers.get("wechatpay-timestamp").unwrap().to_str().unwrap();
     let wechatpay_nonce = headers.get("wechatpay-nonce").unwrap().to_str().unwrap();
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     let wechat_pay = WechatPay::from_env();
-    wechat_pay.verify_signatrue(
+    wechat_pay.verify_signature(
         pub_key.as_str(),
         wechatpay_timestamp,
         wechatpay_nonce,
-        wechatpay_signatrue,
+        wechatpay_signature,
         body,
     ).expect("签名验证失败，非法数据");
     HttpResponse::Ok().json(serde_json::json!({

@@ -116,8 +116,8 @@ impl WechatPay {
             })
     }
     pub fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<Option<String>, PayError>
-    where
-        S: AsRef<str>,
+        where
+            S: AsRef<str>,
     {
         let client = reqwest::blocking::Client::new();
         let mut headers = HeaderMap::new();
@@ -141,6 +141,7 @@ impl WechatPay {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Write;
     use crate::model::{
         AppParams, H5Params, H5SceneInfo, JsapiParams, MicroParams, NativeParams, SceneInfo,
     };
@@ -243,7 +244,18 @@ mod tests {
         dotenv().ok();
         let wechat_pay = WechatPay::from_env();
         let response = wechat_pay.certificates().expect("certificates error");
-        debug!("response: {:#?}", response);
+        let data = response.data.unwrap().first().unwrap().clone();
+        let ciphertext = data.encrypt_certificate.ciphertext;
+        let nonce = data.encrypt_certificate.nonce;
+        let associated_data = data.encrypt_certificate.associated_data;
+        let data = wechat_pay.decrypt_bytes(ciphertext, nonce, associated_data).unwrap();
+        let pub_key = util::x509_to_pem(data.as_slice()).unwrap();
+        let mut pub_key_file = std::fs::File::create("pubkey.pem").unwrap();
+        pub_key_file.write_all(pub_key.as_bytes()).unwrap();
+
+        let (pub_key_valid, expire_timestamp) = util::x509_is_valid(data.as_slice()).unwrap();
+        debug!("pub key valid:{} expire_timestamp:{}", pub_key_valid, expire_timestamp);//证书是否可用,过期时间
+        debug!("pub key: {}", pub_key);
     }
 
     #[test]
