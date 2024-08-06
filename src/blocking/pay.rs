@@ -74,7 +74,7 @@ impl WechatPay {
         self.pay(HttpMethod::POST, url, params)
             .map(|mut result: AppResponse| {
                 if let Some(prepay_id) = &result.prepay_id {
-                    result.sign_data = Some(self.mut_sign_data("prepay_id=", prepay_id));
+                    result.sign_data = Some(self.mut_sign_data("", prepay_id));
                 }
                 result
             })
