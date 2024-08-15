@@ -1,6 +1,6 @@
 [package]
 name = "wechat-pay-rust-sdk"
-version = "0.2.16"
+version = "0.2.17"
 edition = "2021"
 authors = ["lake"]
 description = "微信支付 © Wechat Pay SDK Official (标准库)"
