@@ -16,13 +16,13 @@ use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct WechatPay {
-    appid: String,
-    mch_id: String,
-    private_key: String,
-    serial_no: String,
-    v3_key: String,
-    notify_url: String,
-    base_url: String,
+    pub appid: String,
+    pub mch_id: String,
+    pub private_key: String,
+    pub serial_no: String,
+    pub v3_key: String,
+    pub notify_url: String,
+    pub base_url: String,
 }
 
 unsafe impl Send for WechatPay {}
