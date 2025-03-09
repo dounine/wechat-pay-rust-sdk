@@ -14,6 +14,17 @@ pub struct NativeResponse {
 impl ResponseTrait for NativeResponse {}
 
 #[derive(Debug, Deserialize)]
+pub struct CheckPayResponse {
+    pub trade_state: Option<String>,
+    pub trade_state_desc: Option<String>,
+    pub transaction_id: Option<String>,
+    pub out_trade_no: Option<String>,
+    pub success_time: Option<String>,
+}
+
+impl ResponseTrait for CheckPayResponse {}
+
+#[derive(Debug, Deserialize)]
 pub struct JsapiResponse {
     pub code: Option<String>,
     pub message: Option<String>,
