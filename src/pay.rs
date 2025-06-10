@@ -4,12 +4,9 @@ use crate::request::HttpMethod;
 use crate::response::SignData;
 use crate::{debug, sign, util};
 use aes_gcm::aead::{AeadMut, Payload};
-use aes_gcm::{
-    aead::{KeyInit},
-    Aes256Gcm,
-};
+use aes_gcm::{aead::KeyInit, Aes256Gcm};
 use reqwest::header::{HeaderMap, ACCEPT, AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
-use rsa::pkcs8::{DecodePublicKey};
+use rsa::pkcs8::DecodePublicKey;
 use rsa::sha2::{Digest, Sha256};
 use rsa::{Pkcs1v15Sign, RsaPublicKey};
 use uuid::Uuid;
@@ -38,8 +35,8 @@ pub trait PayNotifyTrait: WechatPayTrait {
         signature: S,
         body: S,
     ) -> Result<(), PayError>
-        where
-            S: AsRef<str>,
+    where
+        S: AsRef<str>,
     {
         let message = format!(
             "{}\n{}\n{}\n",
@@ -48,7 +45,7 @@ pub trait PayNotifyTrait: WechatPayTrait {
             body.as_ref()
         );
         let pub_key = RsaPublicKey::from_public_key_pem(pub_key)
-            .map_err(|e| PayError::VerifyError(format!("public key parser error: {}",e)))?;
+            .map_err(|e| PayError::VerifyError(format!("public key parser error: {}", e)))?;
         let hashed = Sha256::new().chain_update(message).finalize();
         let signature = util::base64_decode(signature.as_ref())?;
         let scheme = Pkcs1v15Sign::new::<Sha256>();
@@ -62,8 +59,8 @@ pub trait PayNotifyTrait: WechatPayTrait {
         nonce: S,
         associated_data: S,
     ) -> Result<WechatPayDecodeData, PayError>
-        where
-            S: AsRef<str>,
+    where
+        S: AsRef<str>,
     {
         let plaintext = self.decrypt_bytes(ciphertext, nonce, associated_data)?;
         let data: WechatPayDecodeData = serde_json::from_slice(&plaintext)?;
@@ -75,8 +72,8 @@ pub trait PayNotifyTrait: WechatPayTrait {
         nonce: S,
         associated_data: S,
     ) -> Result<Vec<u8>, PayError>
-        where
-            S: AsRef<str>,
+    where
+        S: AsRef<str>,
     {
         if nonce.as_ref().len() != 12 {
             return Err(PayError::DecryptError(
@@ -85,11 +82,11 @@ pub trait PayNotifyTrait: WechatPayTrait {
         }
         let v3_key = self.v3_key();
         let ciphertext = util::base64_decode(ciphertext.as_ref())?;
-        let aes_key = v3_key.as_str().as_bytes();
+        let aes_key = v3_key.as_bytes();
         let mut cipher = Aes256Gcm::new(aes_key.into());
         let payload = Payload {
-            msg: &ciphertext.as_slice(),
-            aad: &associated_data.as_ref().as_bytes(),
+            msg: ciphertext.as_slice(),
+            aad: associated_data.as_ref().as_bytes(),
         };
         let plaintext = cipher
             .decrypt(nonce.as_ref().as_bytes().into(), payload)
@@ -115,8 +112,8 @@ pub trait WechatPayTrait {
     }
 
     fn mut_sign_data<S>(&self, prefix: S, prepay_id: S) -> SignData
-        where
-            S: AsRef<str>,
+    where
+        S: AsRef<str>,
     {
         let app_id = self.appid();
         let now_time = self.now_timestamp();
@@ -171,6 +168,7 @@ impl WechatPayTrait for WechatPay {
 }
 
 impl WechatPay {
+    #[allow(dead_code)]
     fn with_base_url(mut self, base_url: impl AsRef<str>) -> Self {
         self.base_url = base_url.as_ref().to_string();
         self
@@ -259,7 +257,7 @@ mod tests {
     use rsa::pkcs8::DecodePublicKey;
     use rsa::sha2::{Digest, Sha256};
     use rsa::{Pkcs1v15Sign, RsaPublicKey};
-    use tracing::{debug};
+    use tracing::debug;
     use uuid::Uuid;
 
     #[inline]
