@@ -594,3 +594,37 @@ pub struct RefundsGoodsDetailParams {
     /// 【商品退货数量】 对应商品的退货数量
     pub refund_quantity: i32,
 }
+
+impl RefundsParams {
+    pub fn new<S: AsRef<str>>(
+        out_refund_no: S,
+        total: i32,
+        refund: i32,
+        transaction_id: Option<S>,
+        out_trade_no: Option<S>,
+    ) -> Self {
+        let amount = RefundsAmountParams {
+            refund,
+            total,
+            currency: Currency::CNY.to_string(),
+            from: None,
+        };
+
+        Self {
+            transaction_id: transaction_id.map(|s| s.as_ref().to_string()),
+            out_trade_no: out_trade_no.map(|s| s.as_ref().to_string()),
+            out_refund_no: out_refund_no.as_ref().to_string(),
+            reason: None,
+            notify_url: None,
+            funds_account: None,
+            amount,
+            goods_detail: None,
+        }
+    }
+}
+
+impl ParamsTrait for RefundsParams {
+    fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}

@@ -93,6 +93,51 @@ pub struct CertificateResponse {
 
 impl ResponseTrait for CertificateResponse {}
 
+#[derive(Deserialize, Debug)]
+#[serde(untagged, bound = "T: ResponseTrait + DeserializeOwned")]
+pub enum WeChatResponse<T>
+where
+    T: ResponseTrait + DeserializeOwned,
+{
+    Ok(T),
+    Err(ErrorResponse),
+}
+
+impl<T> ResponseTrait for WeChatResponse<T> where T: ResponseTrait + DeserializeOwned {}
+
+impl<T> WeChatResponse<T>
+where
+    T: ResponseTrait + DeserializeOwned,
+{
+    pub fn is_success(&self) -> bool {
+        matches!(self, WeChatResponse::Ok(_))
+    }
+
+    pub fn ok(&self) -> Option<&T> {
+        if let WeChatResponse::Ok(ref response) = self {
+            Some(response)
+        } else {
+            None
+        }
+    }
+
+    pub fn err(&self) -> Option<&ErrorResponse> {
+        if let WeChatResponse::Err(ref error_response) = self {
+            Some(error_response)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ErrorResponse {
+    /// 【错误码】 错误码
+    pub code: Option<String>,
+    /// 【错误信息】 错误信息
+    pub message: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RefundsResponse {
     /// 【微信支付退款单号】申请退款受理成功时，该笔退款单在微信支付侧生成的唯一标识。
