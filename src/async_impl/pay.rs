@@ -10,6 +10,7 @@ use crate::model::RefundsParams;
 use crate::pay::{WechatPay, WechatPayTrait};
 use crate::request::HttpMethod;
 use crate::response::AppResponse;
+use crate::response::CheckPayResponse;
 use crate::response::H5Response;
 use crate::response::JsapiResponse;
 use crate::response::MicroResponse;
@@ -71,6 +72,29 @@ impl WechatPay {
             .json::<R>()
             .await
             .map(Ok)?
+    }
+
+    // pub async fn get_pay_info_by_out_trade_no(&self, out_trade_no: &str) -> Result<serde_json::Value, PayError> {
+    //      let url= format!("/v3/pay/transactions/out-trade-no/{}?mchid={}", out_trade_no, self.mch_id());    
+    //     let body = "";
+    //     let headers = self.build_header(HttpMethod::GET, &url, body)?;
+    //     let client = reqwest::Client::new();
+    //     let url = format!("{}{}", self.base_url(), &url);
+    //     debug!("url: {} body: {}", url, body);
+    //     client
+    //         .get(url)
+    //         .headers(headers)
+    //         .body(body)
+    //         .send()
+    //         .await?
+    //         .json()
+    //         .await
+    //         .map(Ok)?
+    // }
+
+    pub async fn get_pay_info_by_out_trade_no(&self, out_trade_no: &str) -> Result<CheckPayResponse, PayError> {
+        let url= format!("/v3/pay/transactions/out-trade-no/{}?mchid={}", out_trade_no, self.mch_id()); 
+        self.get_pay(url.as_str()).await
     }
 
     pub async fn h5_pay(&self, params: H5Params) -> Result<H5Response, PayError> {
