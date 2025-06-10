@@ -516,3 +516,81 @@ pub struct WechatPayDecodeData {
     pub payer: PayerInfo,
     pub amount: AmountInfo,
 }
+
+#[derive(Serialize, Debug, Clone)]
+pub struct RefundsParams {
+    /// 【微信支付订单号】 微信支付侧订单的唯一标识，订单支付成功后，查询订单和支付成功回调通知会返回该参数。
+    /// transaction_id和out_trade_no必须二选一进行传参。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction_id: Option<String>,
+    /// 【商户订单号】 商户下单时传入的商户系统内部订单号。
+    /// transaction_id和out_trade_no必须二选一进行传参。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub out_trade_no: Option<String>,
+    /// 【商户退款单号】 商户系统内部的退款单号，商户系统内部唯一，
+    /// 只能是数字、大小写字母_-|*@ ，
+    /// 同一商户退款单号多次请求只退一笔。不可超过64个字节数。
+    pub out_refund_no: String,
+    /// 【退款原因】 若商户传了退款原因，该原因将在下发给用户的退款消息中显示，具体展示可参见退款通知UI示意图。
+    /// 请注意：1、该退款原因参数的长度不得超过80个字节；2、当订单退款金额小于等于1元且为部分退款时，退款原因将不会在消息中体现。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    /// 【退款结果回调url】 异步接收微信支付退款结果通知的回调地址，通知url必须为外网可访问的url，不能携带参数。
+    /// 如果传了该参数，则商户平台上配置的回调地址（商户平台-交易中心-退款管理-退款配置）将不会生效，优先回调当前传的这个地址。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notify_url: Option<String>,
+    /// 【退款资金来源】 若传递此参数则使用对应的资金账户退款。
+    /// 可选取值：
+    /// AVAILABLE: 仅对旧资金流商户适用(请参考旧资金流介绍区分)，传此枚举指定从可用余额账户出资，否则默认使用未结算资金退款。
+    /// UNSETTLED: 仅对出行预付押金退款适用，指定从未结算资金出资。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub funds_account: Option<String>,
+    /// 【金额信息】订单退款金额信息
+    pub amount: RefundsAmountParams,
+    /// 【退款商品】 请填写需要指定退款的商品信息，所指定的商品信息需要与下单时传入的单品列表goods_detail中的对应商品信息一致 ，如无需按照指定商品退款，本字段不填。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub goods_detail: Option<Vec<RefundsGoodsDetailParams>>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct RefundsAmountParams {
+    /// 【退款金额】 退款金额，币种的最小单位，只能为整数，不能超过原订单支付金额。
+    pub refund: i32,
+    /// 【原订单金额】 原支付交易的订单总金额，币种的最小单位，只能为整数
+    pub total: i32,
+    /// 【退款币种】 符合ISO 4217标准的三位字母代码，固定传：CNY，代表人民币。
+    pub currency: String,
+    /// 【退款出资账户及金额】退款需从指定账户出资时，可传递该参数以指定出资金额（币种最小单位，仅限整数）。
+    /// 多账户出资退款需满足：1、未开通退款支出分离功能；2、订单为待分账或分账中的分账订单。
+    /// 传递参数需确保：1、基本账户可用与不可用余额之和等于退款金额；2、账户类型不重复。不符条件将返回错误。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<Vec<RefundsFromParams>>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct RefundsFromParams {
+    /// 【出资账户类型】 退款出资的账户类型。
+    /// AVAILABLE : 可用余额
+    /// UNAVAILABLE : 不可用余额
+    pub account: String,
+    /// 【出资金额】对应账户出资金额
+    pub amount: i32,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct RefundsGoodsDetailParams {
+    /// 【商户侧商品编码】 订单下单时传入的商户侧商品编码。
+    pub merchant_goods_id: String,
+    /// 【微信侧商品编码】 订单下单时传入的微信侧商品编码（没有可不传）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wechatpay_goods_id: Option<String>,
+    /// 【商品名称】 订单下单时传入的商品名称。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub goods_name: Option<String>,
+    /// 【商品单价】 订单下单时传入的商品单价。
+    pub unit_price: i32,
+    /// 【商品退款金额】 商品退款金额，单位为分
+    pub refund_amount: i32,
+    /// 【商品退货数量】 对应商品的退货数量
+    pub refund_quantity: i32,
+}
