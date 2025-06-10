@@ -1,15 +1,16 @@
+use crate::debug;
 use crate::error::PayError;
-use crate::model::{AppParams, H5Params, JsapiParams, MicroParams, NativeParams, ParamsTrait};
+use crate::model::{
+    AppParams, H5Params, JsapiParams, MicroParams, NativeParams, ParamsTrait, RefundsParams,
+};
 use crate::pay::{WechatPay, WechatPayTrait};
 use crate::request::HttpMethod;
 use crate::response::{
     AppResponse, CertificateResponse, H5Response, JsapiResponse, MicroResponse, NativeResponse,
-    ResponseTrait, SignData,
+    RefundsResponse, ResponseTrait, WeChatResponse,
 };
 use reqwest::header::{HeaderMap, REFERER};
-use serde::Deserialize;
 use serde_json::{Map, Value};
-use crate::{debug};
 
 impl WechatPay {
     pub fn pay<P: ParamsTrait, R: ResponseTrait>(
@@ -116,8 +117,8 @@ impl WechatPay {
             })
     }
     pub fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<Option<String>, PayError>
-        where
-            S: AsRef<str>,
+    where
+        S: AsRef<str>,
     {
         let client = reqwest::blocking::Client::new();
         let mut headers = HeaderMap::new();
@@ -137,18 +138,38 @@ impl WechatPay {
         let url = "/v3/certificates";
         self.get_pay(url)
     }
+
+    pub fn refunds(
+        &self,
+        params: RefundsParams,
+    ) -> Result<WeChatResponse<RefundsResponse>, PayError> {
+        let url = "/v3/refund/domestic/refunds";
+        let body = params.to_json();
+        let headers = self.build_header(HttpMethod::POST, url, body.as_str())?;
+        let client = reqwest::blocking::Client::new();
+        let url = format!("{}{}", self.base_url(), url);
+        debug!("url: {} body: {}", url, body);
+        let builder = client.post(url);
+
+        builder
+            .headers(headers)
+            .body(body)
+            .send()?
+            .json::<WeChatResponse<RefundsResponse>>()
+            .map(Ok)?
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
     use crate::model::{
-        AppParams, H5Params, H5SceneInfo, JsapiParams, MicroParams, NativeParams, SceneInfo,
+        AppParams, H5Params, H5SceneInfo, JsapiParams, MicroParams, NativeParams, RefundsParams,
     };
     use crate::pay::{PayNotifyTrait, WechatPay};
     use crate::response::Certificate;
     use crate::util;
     use dotenvy::dotenv;
+    use std::io::Write;
     use tracing::debug;
 
     #[inline]
@@ -216,7 +237,7 @@ mod tests {
     #[test]
     pub fn test_str() {
         let str = r#" deeplink : "weixin://wap/pay?prepayid%3Dwx122129234529163c948432e26bc0030000&package=4206921243&noncestr=1705066163&sign=788bc4a9f8f44c6f708aff38c4b48a85""#;
-        let strs = str.split(r#"""#).find(|line| line.contains("weixin://"));
+        let _strs = str.split(r#"""#).find(|line| line.contains("weixin://"));
     }
 
     #[test]
@@ -248,13 +269,18 @@ mod tests {
         let ciphertext = data.encrypt_certificate.ciphertext;
         let nonce = data.encrypt_certificate.nonce;
         let associated_data = data.encrypt_certificate.associated_data;
-        let data = wechat_pay.decrypt_bytes(ciphertext, nonce, associated_data).unwrap();
+        let data = wechat_pay
+            .decrypt_bytes(ciphertext, nonce, associated_data)
+            .unwrap();
         let pub_key = util::x509_to_pem(data.as_slice()).unwrap();
         let mut pub_key_file = std::fs::File::create("pubkey.pem").unwrap();
         pub_key_file.write_all(pub_key.as_bytes()).unwrap();
 
         let (pub_key_valid, expire_timestamp) = util::x509_is_valid(data.as_slice()).unwrap();
-        debug!("pub key valid:{} expire_timestamp:{}", pub_key_valid, expire_timestamp);//证书是否可用,过期时间
+        debug!(
+            "pub key valid:{} expire_timestamp:{}",
+            pub_key_valid, expire_timestamp
+        ); //证书是否可用,过期时间
         debug!("pub key: {}", pub_key);
     }
 
@@ -272,5 +298,22 @@ mod tests {
             .decrypt_bytes(ciphertext, nonce, associated_data)
             .unwrap();
         debug!("data: {}", String::from_utf8_lossy(data.as_ref()));
+    }
+
+    #[test]
+    pub fn test_blocking_refunds() {
+        init_log();
+        dotenv().ok();
+        let wechat_pay = WechatPay::from_env();
+
+        let req = RefundsParams::new("123456", 1, 1, None, Some("123456"));
+
+        let body = wechat_pay.refunds(req).expect("refunds fail");
+
+        if body.is_success() {
+            debug!("refunds success: {:?}", body.ok());
+        } else {
+            debug!("refunds error: {:?}", body.err());
+        }
     }
 }

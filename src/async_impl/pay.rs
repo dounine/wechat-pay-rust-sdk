@@ -1,3 +1,4 @@
+use crate::debug;
 use crate::error::PayError;
 use crate::model::AppParams;
 use crate::model::H5Params;
@@ -5,17 +6,19 @@ use crate::model::JsapiParams;
 use crate::model::MicroParams;
 use crate::model::NativeParams;
 use crate::model::ParamsTrait;
+use crate::model::RefundsParams;
 use crate::pay::{WechatPay, WechatPayTrait};
 use crate::request::HttpMethod;
 use crate::response::AppResponse;
 use crate::response::H5Response;
 use crate::response::JsapiResponse;
 use crate::response::MicroResponse;
+use crate::response::RefundsResponse;
 use crate::response::ResponseTrait;
+use crate::response::WeChatResponse;
 use crate::response::{CertificateResponse, NativeResponse};
 use reqwest::header::{HeaderMap, REFERER};
 use serde_json::{Map, Value};
-use crate::{debug};
 
 impl WechatPay {
     pub async fn pay<P: ParamsTrait, R: ResponseTrait>(
@@ -117,8 +120,8 @@ impl WechatPay {
         self.get_pay(url).await
     }
     pub async fn get_weixin<S>(&self, h5_url: S, referer: S) -> Result<Option<String>, PayError>
-        where
-            S: AsRef<str>,
+    where
+        S: AsRef<str>,
     {
         let client = reqwest::Client::new();
         let mut headers = HeaderMap::new();
@@ -139,11 +142,33 @@ impl WechatPay {
             })
             .ok_or_else(|| PayError::WeixinNotFound)
     }
+
+    pub async fn refunds(
+        &self,
+        params: RefundsParams,
+    ) -> Result<WeChatResponse<RefundsResponse>, PayError> {
+        let url = "/v3/refund/domestic/refunds";
+        let body = params.to_json();
+        let headers = self.build_header(HttpMethod::POST, url, body.as_str())?;
+        let client = reqwest::Client::new();
+        let url = format!("{}{}", self.base_url(), url);
+        debug!("url: {} body: {}", url, body);
+        let builder = client.post(url);
+
+        builder
+            .headers(headers)
+            .body(body)
+            .send()
+            .await?
+            .json::<WeChatResponse<RefundsResponse>>()
+            .await
+            .map(Ok)?
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::model::NativeParams;
+    use crate::model::{NativeParams, RefundsParams};
     use crate::pay::WechatPay;
     use dotenvy::dotenv;
     use tracing::debug;
@@ -166,5 +191,22 @@ mod tests {
             .await
             .expect("pay fail");
         debug!("body: {:?}", body);
+    }
+
+    #[tokio::test]
+    pub async fn test_refunds() {
+        init_log();
+        dotenv().ok();
+        let wechat_pay = WechatPay::from_env();
+
+        let req = RefundsParams::new("123456", 1, 1, None, Some("123456"));
+
+        let body = wechat_pay.refunds(req).await.expect("refunds fail");
+
+        if body.is_success() {
+            debug!("refunds success: {:?}", body.ok());
+        } else {
+            debug!("refunds error: {:?}", body.err());
+        }
     }
 }

@@ -11,7 +11,7 @@ macro_rules! error {
 #[cfg(not(feature = "debug-print"))]
 #[macro_export]
 macro_rules! error {
-    ($name:expr)=>{};
+    ($name:expr) => {};
     ($name:expr $(,$arg:tt)+ $(,)?) => {};
 }
 
@@ -29,6 +29,6 @@ macro_rules! debug {
 #[cfg(not(feature = "debug-print"))]
 #[macro_export]
 macro_rules! debug {
-    ($name:expr)=>{};
+    ($name:expr) => {};
     ($name:expr $(,$arg:tt)+ $(,)?) => {};
 }
