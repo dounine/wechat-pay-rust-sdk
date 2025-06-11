@@ -6,14 +6,19 @@
 [![QQ群](https://img.shields.io/badge/QQ%E7%BE%A4-799168925-blue)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=dLoye8pBcO60zGzqLjGO0l-GgMIaf6wQ&authKey=LfxBdZ5A%2F9eWJbKpzTcuWPjmQu5UdIJ3TVTpqRAQYkCID50WLkYoIXcGxGKzupG3&noverify=0&group_code=799168925)
 
 # API文档
-1. [native支付](#native支付)
-2. [jsapi支付](#jsapi支付)
-3. [app支付](#app支付)
-4. [h5支付](#h5支付)
-5. [小程序支付](#小程序支付)
-6. [支付回调解密](#支付回调解密)
-7. [读取平台证书](#读取平台证书)
-8. [签名验证](#签名验证)
+- [wechat-pay-rust-sdk](#wechat-pay-rust-sdk)
+- [API文档](#api文档)
+- [使用指南](#使用指南)
+  - [native支付](#native支付)
+  - [h5支付](#h5支付)
+  - [jsapi支付](#jsapi支付)
+  - [app支付](#app支付)
+  - [小程序支付](#小程序支付)
+  - [支付回调解密](#支付回调解密)
+  - [actix-web demo](#actix-web-demo)
+  - [读取平台证书](#读取平台证书)
+  - [签名验证](#签名验证)
+  - [退款申请](#退款申请)
 
 # 使用指南
 引入依赖
@@ -342,4 +347,21 @@ async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
         "message": "成功"
     }))
 }
+```
+
+## 退款申请
+
+```rust
+    use crate::model::RefundsParams;
+    use crate::pay::WechatPay;
+    
+    let wechat_pay = WechatPay::from_env();
+    let req = RefundsParams::new("123456", 1, 1, None, Some("123456"));
+    let body = wechat_pay.refunds(req).await.expect("refunds fail");
+    if body.is_success() {
+        debug!("refunds success: {:?}", body.ok());
+    } else {
+        debug!("refunds error: {:?}", body.err());
+    }
+
 ```
