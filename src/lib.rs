@@ -1,8 +1,5 @@
 #![doc = include_str!("../README.md")]
-#[cfg(not(feature = "blocking"))]
 pub mod async_impl;
-#[cfg(feature = "blocking")]
-pub mod blocking;
 pub mod error;
 pub(crate) mod macros;
 pub mod model;

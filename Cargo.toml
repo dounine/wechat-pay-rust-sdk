@@ -1,7 +1,7 @@
 [package]
 name = "wechat-pay-rust-sdk"
-version = "0.2.19"
-edition = "2021"
+version = "0.2.20"
+edition = "2024"
 authors = ["lake"]
 description = "微信支付 © Wechat Pay SDK Official (标准库)"
 repository = "https://github.com/dounine/wechat-pay-rust-sdk"
@@ -19,8 +19,7 @@ base64 = "0.22.1"
 chrono = "0.4.31"
 rsa = { version = "0.9.6", features = ["sha2"] }
 aes-gcm = "0.10.3"
-md5 = "0.7.0"
-reqwest = { version = "0.12.20", features = ["json"] }
+reqwest = { version = "0.12.20", optional = true, features = ["json"] }
 thiserror = "2.0.12"
 uuid = { version = "1.6.1", features = ["v4"] }
 tracing = { version = "0.1.40", optional = true }
@@ -29,10 +28,11 @@ serde = { version = "1.0.195", features = ["derive"] }
 pem = "3.0"
 x509-parser = "0.17.0"
 serde_json = "1.0.111"
+maybe-async = "0.2.10"
 
 [features]
-default = []
-blocking = ["reqwest/blocking"]
+default = ["reqwest/blocking"]
+async = ["reqwest"]
 debug-print = ["tracing", "tracing-subscriber"]
 
 [dev-dependencies]
