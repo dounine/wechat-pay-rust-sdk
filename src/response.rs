@@ -114,7 +114,7 @@ where
     }
 
     pub fn ok(&self) -> Option<&T> {
-        if let WeChatResponse::Ok(ref response) = self {
+        if let WeChatResponse::Ok(response) = self {
             Some(response)
         } else {
             None
@@ -122,7 +122,7 @@ where
     }
 
     pub fn err(&self) -> Option<&ErrorResponse> {
-        if let WeChatResponse::Err(ref error_response) = self {
+        if let WeChatResponse::Err(error_response) = self {
             Some(error_response)
         } else {
             None
