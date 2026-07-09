@@ -4,15 +4,21 @@ use crate::request::HttpMethod;
 use crate::response::SignData;
 use crate::{debug, sign, util};
 use aes_gcm::aead::{AeadMut, Payload};
-use aes_gcm::{aead::KeyInit, Aes256Gcm};
-use reqwest::header::{HeaderMap, ACCEPT, AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
+use aes_gcm::{Aes256Gcm, aead::KeyInit};
+use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, USER_AGENT};
 use rsa::pkcs8::DecodePublicKey;
 use rsa::sha2::{Digest, Sha256};
 use rsa::{Pkcs1v15Sign, RsaPublicKey};
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[cfg(feature = "async")]
+use reqwest::Client;
+#[cfg(not(feature = "async"))]
+use reqwest::blocking::Client;
+
+#[derive(Debug, Clone)]
 pub struct WechatPay {
+    pub client: Client,
     pub appid: String,
     pub mch_id: String,
     pub private_key: String,
@@ -174,6 +180,7 @@ impl WechatPay {
         self
     }
     pub fn new<S: AsRef<str>>(
+        client: Client,
         appid: S,
         mch_id: S,
         private_key: S,
@@ -182,6 +189,7 @@ impl WechatPay {
         notify_url: S,
     ) -> Self {
         Self {
+            client,
             appid: appid.as_ref().to_string(),
             mch_id: mch_id.as_ref().to_string(),
             private_key: private_key.as_ref().to_string(),
@@ -194,7 +202,7 @@ impl WechatPay {
 
     #[cfg(feature = "debug-print")]
     pub fn open_debug(&self) {
-        std::env::set_var("RUST_LOG", "oss=debug");
+        unsafe { std::env::set_var("RUST_LOG", "oss=debug") };
         tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .with_line_number(true)
@@ -210,7 +218,15 @@ impl WechatPay {
         let v3_key = std::env::var("WECHAT_V3_KEY").expect("WECHAT_V3_KEY not found");
         let notify_url = std::env::var("WECHAT_NOTIFY_URL").expect("WECHAT_NOTIFY_URL not found");
         let private_key = std::fs::read_to_string(private_key).expect("read private key error");
-        Self::new(appid, mch_id, private_key, serial_no, v3_key, notify_url)
+        Self::new(
+            Client::new(),
+            appid,
+            mch_id,
+            private_key,
+            serial_no,
+            v3_key,
+            notify_url,
+        )
     }
 
     pub(crate) fn build_header(
@@ -233,11 +249,7 @@ impl WechatPay {
         let signature = self.rsa_sign(message);
         let authorization = format!(
             "WECHATPAY2-SHA256-RSA2048 mchid=\"{}\",nonce_str=\"{}\",signature=\"{}\",timestamp=\"{}\",serial_no=\"{}\"",
-            self.mch_id,
-            nonce_str,
-            signature,
-            timestamp,
-            serial_no,
+            self.mch_id, nonce_str, signature, timestamp, serial_no,
         );
         debug!("authorization: {}", authorization);
         let mut headers = HeaderMap::new();
@@ -252,6 +264,7 @@ impl WechatPay {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::pay::{PayNotifyTrait, WechatPay, WechatPayTrait};
     use dotenvy::dotenv;
     use rsa::pkcs8::DecodePublicKey;
@@ -273,7 +286,7 @@ mod tests {
         init_log();
         let private_key_path = "./apiclient_key.pem";
         let private_key = std::fs::read_to_string(private_key_path).unwrap();
-        let wechat_pay = WechatPay::new("", "", private_key.as_ref(), "", "", "");
+        let wechat_pay = WechatPay::new(Client::new(), "", "", private_key.as_ref(), "", "", "");
         let sign_str = wechat_pay.rsa_sign("hello");
         debug!("sign_str: {}", sign_str);
     }
