@@ -20,10 +20,10 @@ use crate::response::{CertificateResponse, NativeResponse};
 use reqwest::header::{HeaderMap, REFERER};
 use serde_json::{Map, Value};
 
-#[cfg(not(feature = "async"))]
-use reqwest::blocking::Client;
 #[cfg(feature = "async")]
 use reqwest::Client;
+#[cfg(not(feature = "async"))]
+use reqwest::blocking::Client;
 
 #[cfg(feature = "async")]
 use maybe_async::maybe_async as maybe_async_attr;
@@ -46,7 +46,7 @@ impl WechatPay {
         map.insert("notify_url".to_owned(), self.notify_url().into());
         let body = serde_json::to_string(&map)?;
         let headers = self.build_header(method.clone(), url, body.as_str())?;
-        let client = Client::new();
+        let client = &self.client;
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {} body: {}", url, body);
         let builder = match method {
@@ -71,7 +71,7 @@ impl WechatPay {
     pub async fn get_pay<R: ResponseTrait>(&self, url: &str) -> Result<R, PayError> {
         let body = "";
         let headers = self.build_header(HttpMethod::GET, url, body)?;
-        let client = Client::new();
+        let client = &self.client;
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {} body: {}", url, body);
         client
@@ -142,7 +142,7 @@ impl WechatPay {
     where
         S: AsRef<str>,
     {
-        let client = Client::new();
+        let client = &self.client;
         let mut headers = HeaderMap::new();
         headers.insert(REFERER, referer.as_ref().parse().unwrap());
         let text = client
@@ -170,7 +170,7 @@ impl WechatPay {
         let url = "/v3/refund/domestic/refunds";
         let body = params.to_json();
         let headers = self.build_header(HttpMethod::POST, url, body.as_str())?;
-        let client = Client::new();
+        let client = &self.client;
         let url = format!("{}{}", self.base_url(), url);
         debug!("url: {} body: {}", url, body);
         let builder = client.post(url);
@@ -188,13 +188,13 @@ impl WechatPay {
 
 #[cfg(test)]
 mod tests {
-    use dotenvy::dotenv;
     use crate::model::{
         AppParams, H5Params, H5SceneInfo, JsapiParams, MicroParams, NativeParams, RefundsParams,
     };
     use crate::pay::{PayNotifyTrait, WechatPay};
     use crate::response::Certificate;
     use crate::util;
+    use dotenvy::dotenv;
     use std::io::Write;
     use tracing::debug;
 
