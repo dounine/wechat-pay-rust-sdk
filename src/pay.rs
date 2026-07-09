@@ -16,7 +16,7 @@ use reqwest::Client;
 #[cfg(not(feature = "async"))]
 use reqwest::blocking::Client;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WechatPay {
     pub client: Client,
     pub appid: String,
