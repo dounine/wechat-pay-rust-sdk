@@ -1,4 +1,5 @@
 # wechat-pay-rust-sdk
+
 [![Latest Version](https://img.shields.io/crates/v/wechat-pay-rust-sdk.svg)](https://crates.io/crates/wechat-pay-rust-sdk)
 
 微信支付 © Wechat Pay SDK Official (标准库)
@@ -6,6 +7,7 @@
 [![QQ群](https://img.shields.io/badge/QQ%E7%BE%A4-799168925-blue)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=dLoye8pBcO60zGzqLjGO0l-GgMIaf6wQ&authKey=LfxBdZ5A%2F9eWJbKpzTcuWPjmQu5UdIJ3TVTpqRAQYkCID50WLkYoIXcGxGKzupG3&noverify=0&group_code=799168925)
 
 # API文档
+
 - [wechat-pay-rust-sdk](#wechat-pay-rust-sdk)
 - [API文档](#api文档)
 - [使用指南](#使用指南)
@@ -21,7 +23,9 @@
   - [退款申请](#退款申请)
 
 # 使用指南
+
 引入依赖
+
 ```toml
 #异步
 wechat-pay-rust-sdk = {version = "x.x.x"}
@@ -32,6 +36,7 @@ wechat-pay-rust-sdk = {version = "x.x.x", features = ["blocking","debug-print"]}
 ```
 
 ## native支付
+
 ```rust
 use wechat_pay_rust_sdk::model::NativeParams;
 use wechat_pay_rust_sdk::pay::WechatPay;
@@ -53,14 +58,17 @@ let body = wechat_pay.native_pay(NativeParams::new(
 )).expect("native_pay error");
 println!("body: {:?}", body);
 ```
+
 输出
+
 ```rust
-NativeResponse { 
-    code: None, 
-    message: None, 
-    code_url: Some("weixin://wxpay/bizpayurl?pr=yL2aIPzz") 
+NativeResponse {
+    code: None,
+    message: None,
+    code_url: Some("weixin://wxpay/bizpayurl?pr=yL2aIPzz")
 }
 ```
+
 ## h5支付
 
 ```rust
@@ -83,14 +91,17 @@ println!("body: {:?}", body);
 ```
 
 输出
+
 ```
-H5Response { 
-    code: None, 
-    message: None, 
-    h5_url: Some("https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx11154002858116623fasdfasdf&package=760499411") 
+H5Response {
+    code: None,
+    message: None,
+    h5_url: Some("https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=wx11154002858116623fasdfasdf&package=760499411")
 }
 ```
+
 h5_url转换成微信支付链接
+
 ```rust
 let body = wechat_pay.h5_pay(H5Params::new(
     "测试支付1分",
@@ -101,7 +112,9 @@ let body = wechat_pay.h5_pay(H5Params::new(
 let weixin_url = wechat_pay.get_weixin(body.h5_url.unwrap().as_str(), "https://mydomain.com").unwrap();
 println!("weixin_url: {}", weixin_url.unwrap());
 ```
+
 输出
+
 ```
 weixin://wap/pay?prepayid%3Dwx13013716281xa5df8313490000&package=35748946&noncestr=1705081036&sign=8d988c82ded5fb02f097d6f1d70
 ```
@@ -120,15 +133,17 @@ let body = wechat_pay.jsapi_pay(JsapiParams::new(
      "open_id".into()
      )).expect("jsapi_pay error");
 println!("body: {:?}", body);
- ```
- 输出
- ```rust
-JsapiResponse { 
-    code: None, 
-    message: None, 
-    prepay_id: Some("wx201410272009395522657a690389285100") 
+```
+
+输出
+
+```rust
+JsapiResponse {
+   code: None,
+   message: None,
+   prepay_id: Some("wx201410272009395522657a690389285100")
 }
- ```
+```
 
 ## app支付
 
@@ -143,15 +158,17 @@ let body = wechat_pay.app_pay(AppParams::new(
      1.into()
      )).expect("app_pay error");
 println!("body: {:?}", body);
- ```
+```
+
 输出
- ```rust
-AppResponse { 
-    code: None, 
-    message: None, 
-    prepay_id: Some("wx201410272009395522657a690389285100") 
+
+```rust
+AppResponse {
+   code: None,
+   message: None,
+   prepay_id: Some("wx201410272009395522657a690389285100")
 }
- ```
+```
 
 ## 小程序支付
 
@@ -160,29 +177,33 @@ use wechat_pay_rust_sdk::model::MicroParams;
 use wechat_pay_rust_sdk::pay::WechatPay;
 
 let wechat_pay = WechatPay::from_env();
-let body = wechat_pay.micro_pay(JsapiParams::new(
+let body = wechat_pay.micro_pay(MicroParams::new(
      "测试支付1分",
      "1243243",
      1.into(),
      "open_id".into()
      )).expect("micro_pay error");
 println!("body: {:?}", body);
- ```
+```
+
 输出
- ```rust
-MicroResponse { 
-    code: None, 
-    message: None, 
-    prepay_id: Some("wx201410272009395522657a690389285100") 
+
+```rust
+MicroResponse {
+   code: None,
+   message: None,
+   prepay_id: Some("wx201410272009395522657a690389285100")
 }
- ```
+```
 
 ## 支付回调解密
+
 ```rust
 use wechat_pay_rust_sdk::pay::{PayNotifyTrait, WechatPay};
 let associated_data = "transaction";
 let nonce = "gZiqzlfayUu2";
 let ciphertext = "pCidqdiS5IIj5f9Pw9j69zuzu8l8IxcPCkfsTBKzna4gqZztNAqTMUY/Ai0rtj8qhaX0naYZF3a2lRid/ofK/83MNv+Neb5+w/0+UOO9nLNJvIFy3oFeMf2PTbp6tgDE35T5AoP9iKQ+1VkXTiUdRxzFoRx6/LfBzHmeuVEDHKScRqjrf6NdxuDDD0ciCQaiHmb18Y0BRZdfNxWTAC83Rar5yTX2NNZPBtGdFDG3yAK2I3Vp7ZKLeMa92ecExNGwHrdJ+HxWw66IIdwVqJLlNmTG0c5zUpSc8yovnaJi1Wv/TC7Tm5NzcwdHsdRE110tIWFbvNmIzIIb+3P33JFWmaXXb1VVDC43DqtlplttYwL6H3kU0ABgHMMbccTwYmP4cSY8BCAL01754nqipxWogEC/la9iQiw85+rLRo/Ny9k3mp8n35D6bDNtS1LiaslbLM92ZbfKeglTg54F/R1l5xWolAVpx8iTz8Oc+XJClXdWr8j5poyh8zK2/RrXPRfr+8s2/oGeGvdaqJbN/LviYcCMDbXU9pKDScWlSi4akxfJu0EatPDvFEbn5DYRQnn5v6wCeesYkEL+wiFCAIs=";
+
 let wechat_pay = WechatPay::from_env();
 let data = wechat_pay.decrypt_paydata(
     ciphertext,
@@ -191,8 +212,10 @@ let data = wechat_pay.decrypt_paydata(
 ).unwrap();
 println!("data: {:#?}", data);
 ```
+
 解密结果
-```
+
+```rust
 WechatPayDecodeData {
     mchid: "163971811111",
     appid: "wx15f4803f25xxxxx",
@@ -212,12 +235,30 @@ WechatPayDecodeData {
     },
 }
 ```
+
 ## actix-web demo
+
 支付回调json格式为
+
 ```json
-{"id":"376151be-0eac-5047-b08a-46b52e15d2e2","create_time":"2024-01-12T12:17:33+08:00","resource_type":"encrypt-resource","event_type":"TRANSACTION.SUCCESS","summary":"支付成功","resource":{"original_type":"transaction","algorithm":"AEAD_AES_256_GCM","ciphertext":"u+MVmYPLQO4fjRsGWChm3sc/AXFVsytCI362RzYJyG25RbP6RSxYtkC2TIUA2ECfdhaJ0pIYuv4TwHwB1JE+0dn/MVQIjsBgaL9jx6IxmFIbkvNg0o623PF250ZhC9snTzxKJJtPtKFn3E8bR/pmqO4zbwUjQyQI5B4LqmzFcKpiKqGZSyG0BdvEWV2sDlR8oHD3s5RH/YN6c0aI7pEtVa1n7CR4qqQo9/NLAjTwloXWxB0BB+OnmlXQ9fu1UdJBS8L53W9zpREbEpH3BeCjrML/5qBs2nwcgvRV0OM30LkEdX8/lX7PiR6jzT2SexbinpSzx1QyXy9ZZfLRjFWVfQDTcDOrkMIaem4rhRgkAe5UDx6xdtqbgPSi5Ry/KHPm1+ptAl1GmEe9LIz8fRLleew3U0THXTSjnu5dJaXqk0qEizvK1pQBZ97QuzWuC2sVh4pd/OyqSNn93mlslkJIgT/UjQRcTIUE/CphdI7BGJkKYbEz4pSoqD/lxUiZNlMWbDeP4gEu/B7+Uk8n9vCOzR35VroLpweC0aDnCa3ru8DfMOcLQTvq04M4GJha9aodXec399ma3UcLEuw=","associated_data":"transaction","nonce":"pEw6yyO8XiSj"}}
+{
+  "id": "376151be-0eac-5047-b08a-46b52e15d2e2",
+  "create_time": "2024-01-12T12:17:33+08:00",
+  "resource_type": "encrypt-resource",
+  "event_type": "TRANSACTION.SUCCESS",
+  "summary": "支付成功",
+  "resource": {
+    "original_type": "transaction",
+    "algorithm": "AEAD_AES_256_GCM",
+    "ciphertext": "u+MVmYPLQO4fjRsGWChm3sc/AXFVsytCI362RzYJyG25RbP6RSxYtkC2TIUA2ECfdhaJ0pIYuv4TwHwB1JE+0dn/MVQIjsBgaL9jx6IxmFIbkvNg0o623PF250ZhC9snTzxKJJtPtKFn3E8bR/pmqO4zbwUjQyQI5B4LqmzFcKpiKqGZSyG0BdvEWV2sDlR8oHD3s5RH/YN6c0aI7pEtVa1n7CR4qqQo9/NLAjTwloXWxB0BB+OnmlXQ9fu1UdJBS8L53W9zpREbEpH3BeCjrML/5qBs2nwcgvRV0OM30LkEdX8/lX7PiR6jzT2SexbinpSzx1QyXy9ZZfLRjFWVfQDTcDOrkMIaem4rhRgkAe5UDx6xdtqbgPSi5Ry/KHPm1+ptAl1GmEe9LIz8fRLleew3U0THXTSjnu5dJaXqk0qEizvK1pQBZ97QuzWuC2sVh4pd/OyqSNn93mlslkJIgT/UjQRcTIUE/CphdI7BGJkKYbEz4pSoqD/lxUiZNlMWbDeP4gEu/B7+Uk8n9vCOzR35VroLpweC0aDnCa3ru8DfMOcLQTvq04M4GJha9aodXec399ma3UcLEuw=",
+    "associated_data": "transaction",
+    "nonce": "pEw6yyO8XiSj"
+  }
+}
 ```
+
 自行使用web框架获取post json数据
+
 ```rust
 #[post("/pay/notify")]
 async fn pay_notify(data: Json<WechatPayNotify>, req: HttpRequest) -> impl Responder {
@@ -241,6 +282,7 @@ async fn pay_notify(data: Json<WechatPayNotify>, req: HttpRequest) -> impl Respo
 ```
 
 ## 读取平台证书
+
 ```rust
 use wechat_pay_rust_sdk::pay::WechatPay;
 
@@ -248,7 +290,9 @@ let wechat_pay = WechatPay::from_env();
 let response = wechat_pay.certificates().expect("certificates error");
 println!("response: {:#?}", response);
 ```
+
 响应
+
 ```json
 CertificateResponse {
     data: Some(
@@ -268,7 +312,9 @@ CertificateResponse {
     ),
 }
 ```
+
 解密上面的证书
+
 ```rust
 use wechat_pay_rust_sdk::pay::{PayNotifyTrait, WechatPay};
 use wechat_pay_rust_sdk::response::Certificate;
@@ -288,7 +334,9 @@ let (pub_key_valid, expire_timestamp) = util::x509_is_valid(data.as_slice()).unw
 debug!("pub key valid:{} expire_timestamp:{}", pub_key_valid, expire_timestamp);//检测证书是否可用,打印过期时间
 println!("pub key: {}", pub_key);
 ```
+
 输出公钥
+
 ```text
 -----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5ufQLGNv3VlQObbWxoRU
@@ -299,8 +347,11 @@ xxxx...
 -----END PUBLIC KEY-----
 
 ```
+
 ## 签名验证
+
 使用上面的公钥用来验签
+
 > 平台的证书有时效性，请及时检测并下载最新的证书并替换本地公钥。
 
 ```rust
@@ -324,7 +375,9 @@ wechat_pay.verify_signature(
     body,
 ).unwrap();
 ```
+
 actix-web中验证的例子
+
 ```rust
 #[post("/pay/notify")]
 async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
@@ -354,7 +407,7 @@ async fn pay_notify(bytes: Bytes, req: HttpRequest) -> impl Responder {
 ```rust
     use crate::model::RefundsParams;
     use crate::pay::WechatPay;
-    
+
     let wechat_pay = WechatPay::from_env();
     let req = RefundsParams::new("123456", 1, 1, None, Some("123456"));
     let body = wechat_pay.refunds(req).await.expect("refunds fail");
