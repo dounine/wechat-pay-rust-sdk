@@ -1,17 +1,14 @@
 [package]
 name = "wechat-pay-rust-sdk"
-version = "0.4.0"
+version = "0.3.0"
 edition = "2024"
-# 本仓库是 fork，不发布到 crates.io（该名字在 crates.io 属于上游）。设 `publish = false`
-# 让 `cargo publish` 在本地就直接失败，而不是上传后才被拒。将来若真要发布，需先改名并删掉这行。
-publish = false
 # MSRV。声明它有两个作用：记录下限，以及让 cargo 解析依赖时**优先挑兼容该版本的版本**。
 # 本仓库按库的惯例不提交 Cargo.lock，若不声明，每次重新解析都可能把实际 MSRV 抬高
 # （实测 1.85 / 1.88 会因 icu_*、time、aes 的新版本而编译失败）。CI 会用这个工具链跑一遍。
 rust-version = "1.89"
 authors = ["lake"]
-description = "微信支付 APIv3 Rust SDK（社区维护 fork，非官方）"
-repository = "https://github.com/ManhattanCafeee/wechat-pay-rust-sdk"
+description = "微信支付 APIv3 的 Rust 客户端库（社区维护，非腾讯官方）"
+repository = "https://github.com/dounine/wechat-pay-rust-sdk"
 license = "Apache-2.0"
 keywords = ["wechat", "pay", "weixin", "wechatpay", "weixinpay"]
 exclude = ["example"]

@@ -11,10 +11,9 @@ Original contributors:
     zrll_ <46812903+zrll12@users.noreply.github.com>
     alan.yang <alan@fpi.cc>
 
-Fork maintained at https://github.com/ManhattanCafeee/wechat-pay-rust-sdk
 Modifications Copyright 2026 ManhattanCafeee
 
 Note: the crate package description in Cargo.toml previously declared
 "license = \"MIT\"" while the distributed LICENSE text was Apache-2.0.
-This fork resolves the inconsistency in favour of Apache-2.0, which is
+This change resolves the inconsistency in favour of Apache-2.0, which is
 the license the code was actually received under.

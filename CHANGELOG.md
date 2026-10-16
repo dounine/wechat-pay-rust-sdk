@@ -6,10 +6,8 @@
 
 ## [Unreleased]
 
-> 相对已打 tag 的 `v0.3.0`，按 0.x 语义升 **`0.4.0`**（新增默认开启的行为）——
-> `Cargo.toml` 的 `version` 已同步为 `0.4.0`，打上 `v0.4.0` tag 后把本节改名为 `[0.4.0]` 即可
-> （README 的安装片段也是按 `v0.4.0` 写的：`v0.3.0` 是 `WechatPay::new(...)` 时代，
-> 与本文档的 `WechatPayConfig` / `from_config` 示例对不上）。
+> 相对 crates.io 上的 `0.2.21`，本节的改动含破坏性变更，`Cargo.toml` 的 `version` 已按 0.x
+> 语义同步为 `0.3.0`；发版时把本节标题改名为 `## [0.3.0] - <日期>` 即可。
 
 ### 破坏性变更
 
@@ -50,6 +48,89 @@
 - **`PayError::ApiError` 新增 `request_id: Option<String>`**（应答头 `Request-ID`，缺失为 `None`）：
   对 `ApiError` 做字段穷尽匹配的代码需要补 `..`。`Display` 在取到该值时附 ` (request-id: …)`，
   取不到时与原先逐字节一致。
+- **`refunds()` 返回类型变更**：`Result<WeChatResponse<RefundsResponse>, PayError>` →
+  `Result<RefundsResponse, PayError>`。失败不再以「带内错误」形式返回。
+- **删除 `WeChatResponse<T>`**：在新契约下它的 `Err` 变体永不可达，留着只会让人以为仍需手工
+  检查 `is_success()`；`is_success()` / `ok()` / `err()` 一并移除。
+- **`WechatPay` 字段私有化**：原先全部是 `pub`（`private_key` / `v3_key` / `base_url` 都不该被
+  外部随手改写）。要覆盖网关地址请用 `with_base_url`。
+- **`PayError` 新增变体**：`ApiError`、`UnknownPlatformSerial`、`StaleNotify`。
+  对 `PayError` 做穷尽 `match` 的代码需要补分支（用 `kind()` 可做粗分类）。
+- **`ErrorResponse` 新增 `detail` 字段**：以结构体字面量构造它的代码需要补该字段。
+- **`cargo test --doc` 不再是受支持的命令**：README 作为 crate 文档，但其中示例需要真实密钥与
+  公网，已设 `[lib] doctest = false`。
+
+### 行为变更
+
+- **`PlatformKeys::needs_refresh` 在「调用方已注入静态密钥、轮换表又从未拉取过」时返回 `false`**：
+  轮换表改为**按需**填充（未知 serial 时拉一次）。否则纯公钥模式（双表并用）的每个请求前都会
+  先打一次 `/v3/certificates`，而该接口不可达时业务会全盘失败 —— 那正是公钥模式要避免的强依赖。
+  轮换表一旦有内容，12 小时窗口语义不变。
+- **`ensure_keys`（请求前的密钥自检）不再无条件传播拉取失败**：只要索引里**还有一份可用密钥**
+  （典型是注入的静态公钥 + 该次拉取失败），请求照发，失败只记 `debug` 日志；一份密钥都没有时
+  仍会返回 `VerifyError` 或原拉取错误。验签本身不放松：验不过的应答仍按未知 serial 单独失败。
+- **未知 `Wechatpay-Serial` 的 `PUB_KEY_ID_…` 分支从应答验签移至刷新入口**
+  （`refresh_platform_keys_for_unknown_serial`）：语义与文案不变（仍含
+  `with_platform_public_key` 的指引，并补上 `add_static_platform_key`），效果是**回调路径**同样
+  不再为伪造的公钥 ID 打一次 `/v3/certificates`。
+- **`refresh_platform_keys` / 证书安装现在只替换轮换表**（不再 `*guard = keys` 整体覆盖）：
+  注入的静态密钥不会被一次平台证书拉取抹掉。`set_platform_keys` 仍是**整体替换两张表**并切
+  静态模式（调用方提供的就是全部可信材料）。
+- **`SignData` 的 JSON 键名改为官方大小写**：`timestamp` → `timeStamp`、`nonce_str` → `nonceStr`、
+  `sign_type` → `signType`、`pay_sign` → `paySign`、`app_id` → `appId`（Rust 字段名不变）。
+  此前序列化出来全是 snake_case，而 `wx.requestPayment` 的参数名是官方定死的 camelCase
+  （`timeStamp` 的 `S` 还必须大写）—— 直接把 `sign_data` 交给前端会**拉起失败**，且前端只会报
+  「缺少参数」，不会指向 SDK。⚠ 若你在前端或用例里手写过这些键名，需要同步改。
+  另注意：**APP 支付的拉起参数名与 JSAPI 完全不同**（`appid` / `partnerid` / `prepayid` /
+  `package` / `noncestr` / `timestamp` / `sign`），不能复用这里的键名，需自行映射。
+- **新增的重试只覆盖三类有官方依据的失败**：确定没送到、微信明确未受理、202。
+  **写接口超时（结果未知）不重试** —— 官方口径是先用查单接口确认状态；只读接口
+  （查单 / 退款查询 / 平台证书）超时照常重试，因为重放纯读没有副作用。
+- **429 / 500 / 502 / 503 现在会自动重试**，这会改变既有错误路径的可观察结果：
+  多次尝试后返回的是**最后一次**尝试的错误体（原先只发一次、返回第一次的响应体）。
+  既有测试中依赖「单个响应体」的用例已显式关掉重试以隔离关注点。
+- **关单不再把「HTTP 200 + 错误信封」当成成功**。走 `request_no_content` 的路径原先根本
+  不看响应体，微信以 200 返回 `{"code":"RULE_LIMIT",...}` 时会静默返回 `Ok(())` ——
+  尽管 README 一直承诺「包括 HTTP 200 但 body 是错误信封，都返回 Err」。现在错误信封在
+  传输层就被归一成 `Err`，与非 2xx 走同一条判定。
+- **202 的去向变了**：以前被当成 2xx 成功放行，再拿空 body 去解析，报出一个与真实原因
+  无关的 JSON 错误；现在按官方要求重发，重试用尽后降级成带状态码 202 的 `ApiError`。
+  注意 202 意味着**请求已被接收、可能随后生效**，所以 `may_have_taken_effect()` 对它返回
+  `true` —— 拿到它应当去查单，而不是换个单号重开。
+- 每次重试都**重新签名**（新 nonce + 新 timestamp）：重试可能跨过 5 分钟的签名有效窗口，
+  复用旧签名会直接 401。
+- `async` feature 新增对 `tokio`（仅 `time`）的依赖，用于退避的异步 sleep。
+- **无签名头的 4xx 现在返回 `VerifyError`（`Local`）而不是 `ApiError`** —— 这是有意的：
+  这类应答的 `code` 会被当成业务结论，不能让它来自无法验证的来源。代价是**拿不到**
+  `response.code`：`ORDER_NOT_EXIST` 这条处置路径在验签失败时**不适用**，必须按「结果未知」
+  处置（查单 + 告警），不得当成「订单不存在」。
+- **无签名头的 5xx 仍是 `ApiError`，但消息带 `[未验签]` 标记**：5xx 不含可被对手用来误判业务
+  的语义（伪造它只能诱发重试），而严格拒绝会把 CDN / 网关的 5xx 从「自动重试」变成「不重试」
+  —— 正好抹掉本仓的重试设计。`code` / `detail` 保留，`SYSTEM_ERROR` 照常重试。
+- **`may_have_taken_effect()` 对验签类错误由 `false` 变为 `true`**（`VerifyError` /
+  `UnknownPlatformSerial` / `StaleNotify` 在 `classify()` 里归 `Delivery::Processed`）。
+  理由：应答是**完整收到之后**才验签的，请求早已送达微信；官方还会故意下发带
+  `WECHATPAY/SIGNTEST/` 前缀的错误签名探测验签实现。判 `false`（= 确定没发生）会诱导写接口
+  换个单号重开，正是本 crate 一直在避免的方向。**重试行为不变**（仍然一律不重试）。
+- **非法 UTF-8 的 2xx 响应体现在报 `JsonError`**（此前会被有损替换成 U+FFFD 后「解析成功」）：
+  JSON 解析改走 `serde_json::from_slice`，不再先转 `String`。
+- **`WechatPay::fetch_platform_keys()` 会丢弃已过期的平台证书**（`x509_is_valid`），
+  且 `/v3/certificates` 的应答（含公开的 `WechatPay::certificates()`）一律**自校验**
+  （用响应内下发的那张证书验它自己）；返回的仍是全新索引，调用方应整体替换。
+- `WechatPay` 的 `Debug` 增加 `response_verify` 与平台证书 serial 列表（都不是机密，
+  且是「是不是误关了验签 / 现在认了哪几张证书」的唯一排查线索）。
+- **非 2xx 一律返回 `Err`**。此前错误体会被解析进字段全为 `Option` 的成功类型，
+  下单失败会伪装成 `Ok(JsapiResponse { code: Some("PARAM_ERROR"), prepay_id: None })`。
+- **2xx + 错误信封也返回 `Err`**。微信偶尔以 HTTP 200 返回 `{"code","message","detail"}`，
+  现在会被识别（判据：顶层出现非空字符串 `code`；`code: null` / `""` 不算）。
+- **HTTP 客户端改为复用**：连接池跨请求共享；此前每个请求都 `Client::new()`。
+- **新增超时**：connect 5s / request 10s / pool idle 90s，可用 `with_timeouts` 覆盖。
+  此前没有超时，服务端不响应会一直挂住。
+- **回调验签新增防重放**：`PlatformKeys::verify_notify` 校验 ±300s 时间戳窗口。
+  此前 `verify_signature` 只验签名，抓到一次合法回调即可无限重放。
+- **平台证书按 `Wechatpay-Serial` 选键**：轮换期新旧两张并存，不再只认单张
+  （此前轮换期会导致回调验签全部失败 → 订单不发货）。
+- 格式错误的 2xx 响应体现在归类为 `JsonError`（此前是 `RequestError`）。
 
 ### 新增
 
@@ -129,66 +210,13 @@
   默认只接受 https（只有调用方把客户端指向明文网关时才放行 http）。
   `download_bill` 返回**原始字节**（`tar_type=GZIP` 时是 gzip 流，由调用方解压），
   非 2xx 以**未验签**的 `ApiError` 返回（消息带 `[未验签]`）。
-
-### 行为变更
-
-- **`PlatformKeys::needs_refresh` 在「调用方已注入静态密钥、轮换表又从未拉取过」时返回 `false`**：
-  轮换表改为**按需**填充（未知 serial 时拉一次）。否则纯公钥模式（双表并用）的每个请求前都会
-  先打一次 `/v3/certificates`，而该接口不可达时业务会全盘失败 —— 那正是公钥模式要避免的强依赖。
-  轮换表一旦有内容，12 小时窗口语义不变。
-- **`ensure_keys`（请求前的密钥自检）不再无条件传播拉取失败**：只要索引里**还有一份可用密钥**
-  （典型是注入的静态公钥 + 该次拉取失败），请求照发，失败只记 `debug` 日志；一份密钥都没有时
-  仍会返回 `VerifyError` 或原拉取错误。验签本身不放松：验不过的应答仍按未知 serial 单独失败。
-- **未知 `Wechatpay-Serial` 的 `PUB_KEY_ID_…` 分支从应答验签移至刷新入口**
-  （`refresh_platform_keys_for_unknown_serial`）：语义与文案不变（仍含
-  `with_platform_public_key` 的指引，并补上 `add_static_platform_key`），效果是**回调路径**同样
-  不再为伪造的公钥 ID 打一次 `/v3/certificates`。
-- **`refresh_platform_keys` / 证书安装现在只替换轮换表**（不再 `*guard = keys` 整体覆盖）：
-  注入的静态密钥不会被一次平台证书拉取抹掉。`set_platform_keys` 仍是**整体替换两张表**并切
-  静态模式（调用方提供的就是全部可信材料）。
-- **`SignData` 的 JSON 键名改为官方大小写**：`timestamp` → `timeStamp`、`nonce_str` → `nonceStr`、
-  `sign_type` → `signType`、`pay_sign` → `paySign`、`app_id` → `appId`（Rust 字段名不变）。
-  此前序列化出来全是 snake_case，而 `wx.requestPayment` 的参数名是官方定死的 camelCase
-  （`timeStamp` 的 `S` 还必须大写）—— 直接把 `sign_data` 交给前端会**拉起失败**，且前端只会报
-  「缺少参数」，不会指向 SDK。⚠ 若你在前端或用例里手写过这些键名，需要同步改。
-  另注意：**APP 支付的拉起参数名与 JSAPI 完全不同**（`appid` / `partnerid` / `prepayid` /
-  `package` / `noncestr` / `timestamp` / `sign`），不能复用这里的键名，需自行映射。
-- **新增的重试只覆盖三类有官方依据的失败**：确定没送到、微信明确未受理、202。
-  **写接口超时（结果未知）不重试** —— 官方口径是先用查单接口确认状态；只读接口
-  （查单 / 退款查询 / 平台证书）超时照常重试，因为重放纯读没有副作用。
-- **429 / 500 / 502 / 503 现在会自动重试**，这会改变既有错误路径的可观察结果：
-  多次尝试后返回的是**最后一次**尝试的错误体（原先只发一次、返回第一次的响应体）。
-  既有测试中依赖「单个响应体」的用例已显式关掉重试以隔离关注点。
-- **关单不再把「HTTP 200 + 错误信封」当成成功**。走 `request_no_content` 的路径原先根本
-  不看响应体，微信以 200 返回 `{"code":"RULE_LIMIT",...}` 时会静默返回 `Ok(())` ——
-  尽管 README 一直承诺「包括 HTTP 200 但 body 是错误信封，都返回 Err」。现在错误信封在
-  传输层就被归一成 `Err`，与非 2xx 走同一条判定。
-- **202 的去向变了**：以前被当成 2xx 成功放行，再拿空 body 去解析，报出一个与真实原因
-  无关的 JSON 错误；现在按官方要求重发，重试用尽后降级成带状态码 202 的 `ApiError`。
-  注意 202 意味着**请求已被接收、可能随后生效**，所以 `may_have_taken_effect()` 对它返回
-  `true` —— 拿到它应当去查单，而不是换个单号重开。
-- 每次重试都**重新签名**（新 nonce + 新 timestamp）：重试可能跨过 5 分钟的签名有效窗口，
-  复用旧签名会直接 401。
-- `async` feature 新增对 `tokio`（仅 `time`）的依赖，用于退避的异步 sleep。
-- **无签名头的 4xx 现在返回 `VerifyError`（`Local`）而不是 `ApiError`** —— 这是有意的：
-  这类应答的 `code` 会被当成业务结论，不能让它来自无法验证的来源。代价是**拿不到**
-  `response.code`：`ORDER_NOT_EXIST` 这条处置路径在验签失败时**不适用**，必须按「结果未知」
-  处置（查单 + 告警），不得当成「订单不存在」。
-- **无签名头的 5xx 仍是 `ApiError`，但消息带 `[未验签]` 标记**：5xx 不含可被对手用来误判业务
-  的语义（伪造它只能诱发重试），而严格拒绝会把 CDN / 网关的 5xx 从「自动重试」变成「不重试」
-  —— 正好抹掉本仓的重试设计。`code` / `detail` 保留，`SYSTEM_ERROR` 照常重试。
-- **`may_have_taken_effect()` 对验签类错误由 `false` 变为 `true`**（`VerifyError` /
-  `UnknownPlatformSerial` / `StaleNotify` 在 `classify()` 里归 `Delivery::Processed`）。
-  理由：应答是**完整收到之后**才验签的，请求早已送达微信；官方还会故意下发带
-  `WECHATPAY/SIGNTEST/` 前缀的错误签名探测验签实现。判 `false`（= 确定没发生）会诱导写接口
-  换个单号重开，正是本 crate 一直在避免的方向。**重试行为不变**（仍然一律不重试）。
-- **非法 UTF-8 的 2xx 响应体现在报 `JsonError`**（此前会被有损替换成 U+FFFD 后「解析成功」）：
-  JSON 解析改走 `serde_json::from_slice`，不再先转 `String`。
-- **`WechatPay::fetch_platform_keys()` 会丢弃已过期的平台证书**（`x509_is_valid`），
-  且 `/v3/certificates` 的应答（含公开的 `WechatPay::certificates()`）一律**自校验**
-  （用响应内下发的那张证书验它自己）；返回的仍是全新索引，调用方应整体替换。
-- `WechatPay` 的 `Debug` 增加 `response_verify` 与平台证书 serial 列表（都不是机密，
-  且是「是不是误关了验签 / 现在认了哪几张证书」的唯一排查线索）。
+- 订单查询 `query_order`、关单 `close_order`、退款查询 `query_refund`。
+- 平台证书管理：`cert::PlatformKeys` + `WechatPay::fetch_platform_keys`（含刷新窗口）。
+- 回调防护：`notify::NotifyHeaders`（含 `from_pairs`）+ `PlatformKeys::verify_notify`。
+- 错误三层归类：`PayError::kind() -> ErrorKind`（Network / Api / Local）。
+- `HttpTimeouts` 与 `WechatPay::with_timeouts` / `timeouts()`。
+- 离线测试网 `tests/offline.rs`（30 个带断言的用例，不需要凭证）+ GitHub Actions CI。
+- 归属声明 `NOTICE`、本 `CHANGELOG.md`。
 
 ### 修复
 
@@ -257,54 +285,6 @@
   所有未知 serial 请求都失败；现在窗口只在**成功**后计，失败会尽快重试。
 - **证书列表路径上的非 2xx 应答也会标 `[未验签]`**：那条路径的 2xx 由调用方自校验，
   错误体的签名从头到尾没验过 —— 不该让调用方以为它是可信的。
-
-## [0.3.0] - 2026-09-11
-
-> **不发布到 crates.io。** 本仓库是 fork —— `wechat-pay-rust-sdk` 这个名字在 crates.io 属于上游，
-> `Cargo.toml` 已设 `publish = false`，引入方式见 README「引入依赖」（git / path）。
-> 版本号仍按语义化版本管理：相对上游 `0.2.21` 含破坏性改动，故取 `0.3.0`。
-
-### 破坏性变更
-
-- **`refunds()` 返回类型变更**：`Result<WeChatResponse<RefundsResponse>, PayError>` →
-  `Result<RefundsResponse, PayError>`。失败不再以「带内错误」形式返回。
-- **删除 `WeChatResponse<T>`**：在新契约下它的 `Err` 变体永不可达，留着只会让人以为仍需手工
-  检查 `is_success()`；`is_success()` / `ok()` / `err()` 一并移除。
-- **`WechatPay` 字段私有化**：原先全部是 `pub`（`private_key` / `v3_key` / `base_url` 都不该被
-  外部随手改写）。要覆盖网关地址请用 `with_base_url`。
-- **`PayError` 新增变体**：`ApiError`、`UnknownPlatformSerial`、`StaleNotify`。
-  对 `PayError` 做穷尽 `match` 的代码需要补分支（用 `kind()` 可做粗分类）。
-- **`ErrorResponse` 新增 `detail` 字段**：以结构体字面量构造它的代码需要补该字段。
-- **`cargo test --doc` 不再是受支持的命令**：README 作为 crate 文档，但其中示例需要真实密钥与
-  公网，已设 `[lib] doctest = false`。
-
-### 行为变更
-
-- **非 2xx 一律返回 `Err`**。此前错误体会被解析进字段全为 `Option` 的成功类型，
-  下单失败会伪装成 `Ok(JsapiResponse { code: Some("PARAM_ERROR"), prepay_id: None })`。
-- **2xx + 错误信封也返回 `Err`**。微信偶尔以 HTTP 200 返回 `{"code","message","detail"}`，
-  现在会被识别（判据：顶层出现非空字符串 `code`；`code: null` / `""` 不算）。
-- **HTTP 客户端改为复用**：连接池跨请求共享；此前每个请求都 `Client::new()`。
-- **新增超时**：connect 5s / request 10s / pool idle 90s，可用 `with_timeouts` 覆盖。
-  此前没有超时，服务端不响应会一直挂住。
-- **回调验签新增防重放**：`PlatformKeys::verify_notify` 校验 ±300s 时间戳窗口。
-  此前 `verify_signature` 只验签名，抓到一次合法回调即可无限重放。
-- **平台证书按 `Wechatpay-Serial` 选键**：轮换期新旧两张并存，不再只认单张
-  （此前轮换期会导致回调验签全部失败 → 订单不发货）。
-- 格式错误的 2xx 响应体现在归类为 `JsonError`（此前是 `RequestError`）。
-
-### 新增
-
-- 订单查询 `query_order`、关单 `close_order`、退款查询 `query_refund`。
-- 平台证书管理：`cert::PlatformKeys` + `WechatPay::fetch_platform_keys`（含刷新窗口）。
-- 回调防护：`notify::NotifyHeaders`（含 `from_pairs`）+ `PlatformKeys::verify_notify`。
-- 错误三层归类：`PayError::kind() -> ErrorKind`（Network / Api / Local）。
-- `HttpTimeouts` 与 `WechatPay::with_timeouts` / `timeouts()`。
-- 离线测试网 `tests/offline.rs`（30 个带断言的用例，不需要凭证）+ GitHub Actions CI。
-- 仓库指南 `AGENTS.md`、归属声明 `NOTICE`、本 `CHANGELOG.md`。
-
-### 修复
-
 - **错误吞噬**：下单失败曾被当作成功返回。
 - **非微信形状的错误体被静默丢弃**：现在保留原文（超长截断、空体有显式标记）。
 - **许可证元数据不一致**：`Cargo.toml` 声明 MIT 而 `LICENSE` 是 Apache-2.0 ——
