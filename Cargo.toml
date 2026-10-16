@@ -1,13 +1,29 @@
 [package]
 name = "wechat-pay-rust-sdk"
-version = "0.2.21"
+version = "0.3.0"
 edition = "2024"
+# MSRV。声明它有两个作用：记录下限，以及让 cargo 解析依赖时**优先挑兼容该版本的版本**。
+# 本仓库按库的惯例不提交 Cargo.lock，若不声明，每次重新解析都可能把实际 MSRV 抬高
+# （实测 1.85 / 1.88 会因 icu_*、time、aes 的新版本而编译失败）。CI 会用这个工具链跑一遍。
+rust-version = "1.89"
 authors = ["lake"]
-description = "微信支付 © Wechat Pay SDK Official (标准库)"
+description = "微信支付 APIv3 的 Rust 客户端库（社区维护，非腾讯官方）"
 repository = "https://github.com/dounine/wechat-pay-rust-sdk"
-license = "MIT"
+license = "Apache-2.0"
 keywords = ["wechat", "pay", "weixin", "wechatpay", "weixinpay"]
 exclude = ["example"]
+
+[lib]
+# README 通过 `#![doc = include_str!("../README.md")]` 充当 crate 文档，
+# 但其中示例需要真实商户证书/密钥 + 公网环境（还有 actix-web、输出示例片段），
+# 无法作为 doctest 运行。关闭 doctest 让 `cargo test` 反映真实状态；
+# README 示例的正确性依赖 tests/offline.rs 与人工验证。
+doctest = false
+
+[lints.rust]
+# 公开 API 必须有文档注释。全部公开项已补齐（此前 179 项缺失），
+# CI 用 `-D warnings` 把它变成硬门槛，避免再退化。
+missing_docs = "warn"
 
 [workspace]
 members = ["example"]
@@ -16,7 +32,6 @@ members = ["example"]
 
 [dependencies]
 base64 = "0.23"
-chrono = "0.4"
 rsa = { version = "0.9", features = ["sha2"] }
 aes-gcm = "0.11"
 reqwest = { version = "0.13", optional = true, default-features = false, features = ["json", "rustls"] }
@@ -28,14 +43,23 @@ serde = { version = "1", features = ["derive"] }
 pem = "4"
 x509-parser = "0.18"
 serde_json = "1"
+# 仅在 `async` feature 下启用，且只要 `time`：供重试退避的 `tokio::time::sleep` 使用。
+tokio = { version = "1", optional = true, default-features = false, features = ["time"] }
 maybe-async = "0.2"
 
 [features]
 default = ["reqwest/blocking"]
-async = ["reqwest"]
+# `dep:tokio` 只带 `time`：重试退避在异步模式下需要 `tokio::time::sleep`。
+# 异步 reqwest 本来就跑在 tokio 上，所以这不算引入新的运行时体系；
+# 用 `dep:` 前缀是为了不额外暴露一个叫 `tokio` 的 feature。
+async = ["reqwest", "dep:tokio"]
 debug-print = ["tracing", "tracing-subscriber"]
 
 [dev-dependencies]
+# tests/offline.rs 需要：加密回调节点（aes-gcm）、验证签名与生成平台公钥（rsa）、构造 JSON（serde_json）
+aes-gcm = "0.11"
+rsa = { version = "0.9", features = ["sha2"] }
+serde_json = "1"
 dotenvy = "0.15"
 tracing = "0.1"
 tracing-subscriber = "0.3"

@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      # 关键：在**所有 feature 组合**下 clippy 都必须零告警。
+      # 其中 missing_docs 是硬门槛（公开 API 必须写文档），而 debug-print 会切换
+      # src/macros.rs 里两份宏定义 —— 只测一种组合会漏掉一半的 cfg 分支。
+      - name: Clippy (no features)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Clippy (async)
+        run: cargo clippy --all-targets --features async -- -D warnings
+
+      - name: Clippy (all features)
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      # 公开文档里的 intra-doc 链接断裂不会被 clippy 发现（它只看代码，不看 rustdoc 链接），
+      # 这里把 rustdoc 告警升级为错误，防止文档随着重命名/移动悄悄腐坏。
+      # --all-features：debug-print 会切换 src/macros.rs 的两份宏定义，只测一种组合会漏掉一半。
+      # --no-deps：不为依赖建文档，避免把上游的问题算到本仓库头上，也省时间。
+      - name: Doc (deny warnings)
+        run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+      # 完整测试：tests/offline.rs 用本地 mock 微信网关，不需要凭证或公网。
+      # src/ 内需要真实商户凭证的冒烟测试已标记 #[ignore]，默认跳过。
+      - name: Test (sync)
+        run: cargo test
+
+      - name: Test (async)
+        run: cargo test --features async
+
+      - name: Check example
+        run: cargo check -p example
+
+      # 有意不运行 `cargo test --doc`：README 作为 crate 文档，但其中的示例需要真实
+      # 商户密钥与公网（还有 actix-web 片段），故设了 [lib] doctest = false。
+      #
+      # 需要真实凭证的测试可在本机（有 .env 与 PEM fixture）手动运行：
+      #   cargo test --lib -- --ignored
+
+  msrv:
+    name: MSRV (1.89)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.89.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      # 本仓库按库的惯例不提交 Cargo.lock，依赖解析结果会漂移，MSRV 可能被悄悄抬高
+      # （实测 1.85 / 1.88 都曾因 icu_*、time、aes 的新版本而失败）。
+      # Cargo.toml 里的 rust-version 会让 cargo 优先挑兼容版本，这个作业保证它不虚报。
+      - name: Check on MSRV
+        run: cargo check --all-targets

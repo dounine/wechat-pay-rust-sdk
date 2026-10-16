@@ -1,0 +1,19 @@
+wechat-pay-rust-sdk
+Copyright 2024-2026 lake <102535481@qq.com> and other contributors
+
+This product includes software originally developed as part of
+wechat-pay-rust-sdk (https://github.com/dounine/wechat-pay-rust-sdk),
+licensed under the Apache License, Version 2.0.
+
+Original contributors:
+    lake (dounine) <102535481@qq.com>
+    唐加彬 <me@tangjiabin.cn>
+    zrll_ <46812903+zrll12@users.noreply.github.com>
+    alan.yang <alan@fpi.cc>
+
+Modifications Copyright 2026 ManhattanCafeee
+
+Note: the crate package description in Cargo.toml previously declared
+"license = \"MIT\"" while the distributed LICENSE text was Apache-2.0.
+This change resolves the inconsistency in favour of Apache-2.0, which is
+the license the code was actually received under.

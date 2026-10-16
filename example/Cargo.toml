@@ -9,7 +9,9 @@ publish = false
 [dependencies]
 actix-web = "4"
 dotenvy = "0.15"
-wechat-pay-rust-sdk = { path = "..", features = ["debug-print", "async"] }
+# 刻意**不**开 debug-print：它会打印 Authorization 头与请求体（含 openid、金额）。
+# 示例会被当成生产范本抄走，默认必须是安全的那一档。
+wechat-pay-rust-sdk = { path = "..", features = ["async"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 tokio = { version = "1", features = ["full"] }
